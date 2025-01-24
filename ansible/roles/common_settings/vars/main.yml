@@ -27,7 +27,7 @@ WORKER_RLIMIT_NOFILE: "150000" # Changes the limit on the largest size of a core
 NGINX_METRIC_PORT: "8085"
 #--------------------------------------------------------#
 ########## MARIADB SERVICE ROLE ##########
-MYSQL_ROOT_PASSWORD: "1" # Set root password
+MYSQL_ROOT_PASSWORD: "" # Set root password
 MYSQL_DB_NAME: "" # set the mariadb db name
 MYSQL_DUMPS_TARGET_PATH: "/opt/backup/mysqldump" # set the mariadb backup path
 MYSQL_DATA_PATH: "/var/lib/mysql"
