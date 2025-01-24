@@ -1,0 +1,22 @@
+---
+# tasks file for prometheus
+- block:
+    - name: "Install prometheus service"
+      ansible.builtin.include_tasks: "install.yml"
+      tags:
+        - "update"
+  tags: "install"
+
+- block:
+  - name: "Configure prometheus service"
+    ansible.builtin.include_tasks: "configure.yml"
+    tags:
+      - "conf_file"
+      - "rule_file"
+      - "targets"
+  tags: "configure"
+
+- block:
+    - name: "Remove prometheus service"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

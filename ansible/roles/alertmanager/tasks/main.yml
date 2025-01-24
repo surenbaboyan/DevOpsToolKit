@@ -1,0 +1,21 @@
+---
+# tasks file for alertmanager
+- block:
+    - name: "Install alert manager service"
+      ansible.builtin.include_tasks: "install.yml"
+      tags:
+        - "update"
+  tags: "install"
+
+- block:
+    - name: "Configure alert manager server"
+      ansible.builtin.include_tasks: "configure.yml"
+      tags:
+        - "conf_file"
+        - "tmpl_file"
+  tags: "configure"
+
+- block:
+    - name: "Remove alert manager service"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

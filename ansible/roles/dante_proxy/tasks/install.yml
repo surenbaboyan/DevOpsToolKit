@@ -1,0 +1,27 @@
+---
+- name: "Install dante"
+  ansible.builtin.apt:
+    name: "dante-server"
+    state: "present"
+
+- name: "Add the user for dante proxy"
+  ansible.builtin.user:
+    name: "{{ DANTE_USER }}"
+    password: "{{ DANTE_USER_PASSWORD | password_hash('sha512') }}"
+    create_home: "no"
+    shell: "/usr/sbin/nologin"
+    append: "yes"
+
+- name: "Create dante log directory"
+  ansible.builtin.file:
+    path: "{{ DANTE_LOG_PATH }}"
+    state: "directory"
+    mode: "0644"
+
+- name: "Copy dante systemd service unit"
+  ansible.builtin.copy:
+    src: "danted.service"
+    dest: "{{ DANTE_SERVICE_FILE }}"
+    mode: "0644"
+  notify: 
+    - "Restart dante"

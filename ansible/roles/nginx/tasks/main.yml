@@ -1,0 +1,19 @@
+--- 
+- block:
+    - name: "Install nginx"
+      ansible.builtin.include_tasks: "install.yml"
+  tags: "install"
+
+- block:
+    - name: "Configure nginx"
+      ansible.builtin.include_tasks: "configure.yml"
+      tags:
+        - "conf_file"
+        - "metric_file"
+        - "ssl_certificate"
+  tags: "configure"
+
+- block:
+    - name: "Remove nginx"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

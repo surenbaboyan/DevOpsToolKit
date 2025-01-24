@@ -1,0 +1,9 @@
+server {
+        listen {{ NGINX_METRIC_PORT }};
+        server_name localhost;
+
+        location = /basic_status {
+                stub_status;
+                access_log off;
+        }
+}

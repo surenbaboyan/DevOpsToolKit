@@ -1,0 +1,19 @@
+---
+- name: "Uninstall laravel-echo-server globally"
+  community.general.npm:
+    name: "laravel-echo-server"
+    state: "absent"
+    global: "true"
+  when: LARAVEL_ECHO_SERVER == "yes"
+
+- name: "Remove npm and all dependencies"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "absent"
+  loop:
+    - "{{ NVM_DIR }}/versions/node/v{{ NVM_NODE_VERSION }}/bin/npm"
+    - "{{ NVM_DIR }}/install_nvm_{{ NVM_NODE_VERSION }}.sh"
+    - "{{ NVM_DIR }}"
+    - "{{ NPM_SYM_LINK }}"
+    - "{{ NODE_SYM_LINK }}"
+

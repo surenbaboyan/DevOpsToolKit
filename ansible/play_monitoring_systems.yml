@@ -1,0 +1,72 @@
+- name: "Install Monitoring Systems"
+  vars_prompt:
+    - name: "SERVER_GROUPS"
+      prompt: "Please specify the servers, separated by commas "
+      private: no
+    - name: "ALERTMANAGER"
+      prompt: "Would you like to choose alert manager? Please type yes or no "
+      private: no
+    - name: "PROMETHEUS"
+      prompt: "Would you like to choose prometheus? Please type yes or no "
+      private: no
+    - name: "GRAFANA"
+      prompt: "Would you like to choose grafana? Please type yes or no "
+      private: no
+    - name: "NODE_EXPORTER"
+      prompt: "Would you like to choose node_exporter? Please type yes or no "
+      private: no
+    - name: "NGINX_EXPORTER"
+      prompt: "Would you like to choose nginx_exporter? Please type yes or no "
+      private: no
+    - name: "PHPFPM_EXPORTER"
+      prompt: "Would you like to choose phpfpm_exporter? Please type yes or no "
+      private: no
+    - name: "ELASTICSEARCH_EXPORTER"
+      prompt: "Would you like to choose elasticsearch_exporter? Please type yes or no "
+      private: no
+  hosts: "{{ SERVER_GROUPS.split(',')}} "
+  become: yes
+
+  pre_tasks:
+    - block:
+        - name: "Set a hostname"
+          ansible.builtin.hostname:
+            name: "{{ HOSTNAME }}"
+
+        - name: "Install needed apps"
+          ansible.builtin.apt:
+            name: "{{ INSTALL_TOOLS }}"
+            state: "latest"
+            update_cache: "yes"
+      when: RUN_PRE_TASK == "yes"
+
+  roles:
+    - common_settings
+    - role: alertmanager
+      vars:
+        Alertmanager: "{{ ALERTMANAGER }}"
+      when: Alertmanager == "yes"
+    - role: prometheus
+      vars:
+        Prometheus: "{{ PROMETHEUS }}"
+      when: Prometheus == "yes"
+    - role: grafana
+      vars:
+        Grafana: "{{ GRAFANA }}"
+      when: Grafana == "yes"
+    - role: node_exporter
+      vars:
+        Node_Exporter: "{{ NODE_EXPORTER }}"
+      when: Node_Exporter == "yes"
+    - role: nginx_exporter
+      vars:
+        Nginx_Exporter: "{{ NGINX_EXPORTER }}"
+      when: Nginx_Exporter == "yes"
+    - role: phpfpm_exporter
+      vars:
+        Phpfpm_Exporter: "{{ PHPFPM_EXPORTER }}"
+      when: Phpfpm_Exporter == "yes"
+    - role: elasticsearch_exporter
+      vars:
+        Elasticsearch_Exporter: "{{ ELASTICSEARCH_EXPORTER }}"
+      when: Elasticsearch_Exporter == "yes"

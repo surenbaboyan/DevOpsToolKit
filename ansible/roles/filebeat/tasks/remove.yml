@@ -1,0 +1,34 @@
+---
+- name: "Stop and disable Filebeat service"
+  ignore_errors: "yes"
+  ansible.builtin.service:
+    name: "filebeat"
+    state: "stopped"
+    enabled: "false"
+
+- name: "Remove filebeat package"
+  ansible.builtin.apt:
+    name: "filebeat"
+    state: "absent"
+    purge: "true"
+  register: "apt_action"
+  retries: "50"
+  until: "apt_action is success or ('E: Could not get lock /var/lib/dpkg/lock-frontend' not in apt_action.msg and '/var/lib/dpkg/lock-frontend' not in apt_action.msg)"
+
+- name: "Remove Filebeat repository"
+  apt_repository:
+    repo: 'deb https://artifacts.elastic.co/packages/{{ FILEBEAT_VERSION_FAMILY }}/apt stable main'
+    state: "absent"
+
+- name: "Remove Elasticsearch apt key."
+  ansible.builtin.apt_key:
+    id: "46095ACC8548582C1A2699A9D27D666CD88E42B4"
+    state: "absent"
+
+- name: "Remove filebeat configuration and log files"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "absent"
+  loop:
+    - "{{ FILEBEAT_LOG_PATH }}"
+    - "{{ FILEBEAT_DATA_PATH }}"

@@ -1,0 +1,74 @@
+---
+- name: "Create alertmanager system group"
+  ansible.builtin.group:
+    name: "alertmanager"
+    system: "true"
+    state: "present"
+
+- name: "Create alertmanager system user"
+  ansible.builtin.user:
+    name: "{{ ALERTMANAGER_SYSTEM_USER }}"
+    system: true
+    shell: "/usr/sbin/nologin"
+    group: "{{ ALERTMANAGER_SYSTEM_USER }}"
+    createhome: "false"
+
+- name: "Create alertmanager directories"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "directory"
+    owner: "{{ ALERTMANAGER_SYSTEM_USER }}"
+    group: "{{ ALERTMANAGER_SYSTEM_USER }}"
+    mode: "0755"
+  loop:
+    - "{{ ALERTMANAGER_CONFIG_DIR }}"
+    - "{{ ALERTMANAGER_CONFIG_DIR }}/templates"
+    - "{{ ALERTMANAGER_DB_DIR }}"
+
+- name: "Install/Update alertmanager"
+  block:
+  - name: "Get current OS architecture"
+    shell: "dpkg --print-architecture"
+    register: "OS_ARCHITECTURE"
+
+  - name: "Download and unpack alertmanager binaries"
+    ansible.builtin.unarchive:
+      src: "https://github.com/prometheus/alertmanager/releases/download/v{{ ALERTMANAGER_VERSION }}/alertmanager-{{ ALERTMANAGER_VERSION }}.linux-{{ OS_ARCHITECTURE.stdout }}.tar.gz"
+      dest: "/tmp"
+      owner: "root"
+      group: "root"
+      remote_src: "yes"
+    register: "download_archive"
+    until: "download_archive is succeeded"
+    retries: "5"
+    delay: "2"
+
+  - name: "Propagate official alertmanager and amtool binaries"
+    ansible.builtin.copy:
+      src: "/tmp/alertmanager-{{ ALERTMANAGER_VERSION }}.linux-{{OS_ARCHITECTURE.stdout}}/{{ item }}"
+      dest: "{{ ALERTMANAGER_BINARY_INSTALL_DIR }}/{{ item }}"
+      mode: "0755"
+      owner: "root"
+      group: "root"
+      remote_src: "yes"
+    loop:
+      - "alertmanager"
+      - "amtool"
+
+  - name: "Remove alertmanager download files"
+    ansible.builtin.file:
+      path: "/tmp/alertmanager-{{ ALERTMANAGER_VERSION }}.linux-{{OS_ARCHITECTURE.stdout}}"
+      state: "absent"
+  tags: "update"
+  notify:
+    - "Restart alertmanager"
+
+- name: "Create systemd service unit"
+  ansible.builtin.template:
+    src: "alertmanager.service.j2"
+    dest: "{{ ALERTMANAGER_SERVICE_FILE_PATH }}/alertmanager.service"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify:
+    - "Restart alertmanager"

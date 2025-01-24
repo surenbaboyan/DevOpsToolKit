@@ -1,0 +1,101 @@
+---
+- name: "Install Apps"
+  vars_prompt:
+    - name: "SERVER_GROUPS"
+      prompt: "Please specify the servers, separated by commas "
+      private: no
+    - name: "NGINX"
+      prompt: "Would you like to choose nginx? Please type yes or no "
+      private: no
+    - name: "MARIADB"
+      prompt: "Would you like to choose mariadb? Please type yes or no "
+      private: no
+    - name: "PHP"
+      prompt: "Would you like to choose php? Please type yes or no"
+      private: no
+    - name: "SUPERVISOR"
+      prompt: "Would you like to choose supervisor? Please type yes or no"
+      private: no
+    - name: "REDIS"
+      prompt: "Would you like to choose redis? Please type yes or no"
+      private: no
+    - name: "NODE"
+      prompt: "Would you like to choose node? Please type yes or no"
+      private: no
+    - name: "PM2"
+      prompt: "Would you like to choose pm2? Please type yes or no"
+      private: no
+    - name: "MONGODB"
+      prompt: "Would you like to choose mongodb? Please type yes or no"
+      private: no
+    - name: "DANTEPROXY"
+      prompt: "Would you like to choose dante proxy? Please type yes or no "
+      private: no
+    - name: "PRIVOXY"
+      prompt: "Would you like to choose privoxy? Please type yes or no "
+      private: no
+    - name: "DOCKER"
+      prompt: "Would you like to choose docker? Please type yes or no "
+      private: no
+  hosts: "{{ SERVER_GROUPS.split(',')}} "
+  become: yes
+
+  pre_tasks:
+    - block:
+      - name: "Set a hostname"
+        ansible.builtin.hostname:
+          name: "{{ HOSTNAME }}"
+
+      - name: "Install needed apps"
+        ansible.builtin.apt:
+          name: "{{ INSTALL_TOOLS }}"
+          state: "latest"
+          update_cache: "yes"
+      tags: "run_pre_task"
+
+  roles:
+    - common_settings
+    - role: nginx
+      vars:
+        Nginx: "{{ NGINX }}"
+      when: Nginx == "yes"
+    - role: mariadb
+      vars:
+        Mariadb: "{{ MARIADB }}"
+      when: Mariadb == "yes"
+    - role: php
+      vars:
+        Php: "{{ PHP }}"
+      when: Php == "yes"
+    - role: supervisor
+      vars:
+        Supervisor: "{{ SUPERVISOR }}"
+      when: Supervisor == "yes"
+    - role: redis
+      vars:
+        Redis: "{{ REDIS }}"
+      when: Redis == "yes"
+    - role: node
+      vars:
+        Node: "{{ NODE }}"
+      when: Node == "yes"
+    - role: pm2
+      vars:
+        Pm2: "{{ PM2 }}"
+      when: Pm2 == "yes"
+    - role: mongodb
+      vars:
+        Mongodb: "{{ MONGODB }}"
+      when: Mongodb == "yes"
+    - role: dante_proxy
+      vars:
+        Dante: "{{ DANTEPROXY }}"
+      when: Dante == "yes"
+    - role: privoxy
+      vars:
+        Privoxy: "{{ PRIVOXY }}"
+      when: Privoxy == "yes"
+    - role: docker
+      vars:
+        Docker: "{{ DOCKER }}"
+      when: Docker == "yes"

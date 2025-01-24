@@ -1,0 +1,15 @@
+---
+# handlers file for phpfpm_exporter
+- name: "Restart phpfpm_exporter"
+  ansible.builtin.systemd:
+    daemon_reload: "true"
+    name: "phpfpm_exporter"
+    state: "restarted"
+    enabled: "true"
+  register: "phpfpm_exporter_restarted"
+
+- name: "Reload phpfpm_exporter"
+  ansible.builtin.systemd:
+    name: "phpfpm_exporter"
+    state: "restarted"
+  when: "phpfpm_exporter_restarted is not defined"

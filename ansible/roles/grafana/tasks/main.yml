@@ -1,0 +1,24 @@
+---
+# tasks file for grafana
+- block:
+    - name: "Install grafana service"
+      ansible.builtin.include_tasks: "install.yml"
+      tags:
+        - "update"
+  tags: "install"
+
+- block:
+    - name: "Configure grafana server"
+      ansible.builtin.include_tasks: "configure.yml"
+      tags:
+        - "conf_file"
+        - "datasources"
+        - "dashboards"
+        - "dashboard_from_remote_src"
+        - "dashboard_from_local_src"
+  tags: "configure"
+
+- block:
+    - name: "Remove grafana service"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

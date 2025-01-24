@@ -1,0 +1,58 @@
+---
+- name: "Remove only nginx_exporter"
+  tags: "remove_nginx_exporter"
+  block:
+  - name: "Stop nginx_exporter service"
+    ansible.builtin.systemd: # noqa ignore-errors
+      name: "nginx_exporter.service"
+      state: "stopped"
+    ignore_errors: "true"
+
+  - name: "Remove node_exporter binary and systemd unit"
+    ansible.builtin.file:
+      path: "{{ item }}"
+      state: "absent"
+    loop:
+      - "{{ NGINX_EXPORTER_INSTALL_DIR }}/nginx_exporter"
+      - "{{ NGINX_EXPORTER_SERVICE_FILE_PATH }}/nginx_exporter.service"
+
+  - name: "Remove the nginx_exporter system user"
+    ansible.builtin.user:
+      name: "nginx_exporter"
+      force: "true"
+      state: "absent"
+
+  - name: "Remove nginx_exporter system group"
+    ansible.builtin.group:
+      name: "nginx_exporter"
+      state: "absent"
+
+- name: "Remove nginxlog_exporter"
+  tags: "remove_nginxlog_exporter"
+  block:
+  - name: "Stop nginxlog_exporter service"
+    ansible.builtin.systemd: # noqa ignore-errors
+      name: "prometheus-nginxlog-exporter"
+      state: "stopped"
+    ignore_errors: "true"
+
+  - name: "Remove nginxlog-exporter config and systemd unit"
+    ansible.builtin.file:
+      path: "{{ item }}"
+      state: "absent"
+    loop:
+      - "{{ NGINXLOG_EXPORTER_CONFIG_PATH }}"
+      - "{{ NGINXLOG_EXPORTER_BINARY_INSTALL_DIR }}/prometheus-nginxlog-exporter"
+      - "{{ NGINXLOG_EXPORTER_SERVICE_FILE_PATH }}/nginxlog_exporter.service"
+
+  - name: "Remove the nginxlog_exporter system user"
+    ansible.builtin.user:
+      name: "{{ NGINXLOG_EXPORTER_USER }}"
+      force: "true"
+      state: "absent"
+
+  - name: "Remove nginxlog_exporter system group"
+    ansible.builtin.group:
+      name: "{{ NGINXLOG_EXPORTER_GROUP }}"
+      state: "absent"
+

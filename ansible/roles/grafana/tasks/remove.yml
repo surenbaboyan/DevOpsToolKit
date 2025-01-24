@@ -1,0 +1,28 @@
+---
+- name: "Stop grafana server service"
+  ansible.builtin.systemd:
+    name: "grafana-server.service"
+    state: "stopped"
+  ignore_errors: "true"
+
+- name: "Remove grafana files and directories"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "absent"
+  loop:
+    - "{{ GRAFANA_INSTALL_DIR }}"
+    - "{{ GRAFANA_CONFIG_DIR }}"
+    - "{{ GRAFANA_LOG_DIR }}"
+    - "{{ GRAFANA_DATA_DIR }}"
+    - "{{ GRAFANA_SERVICE_FILE }}"
+
+- name: "Remove grafana system user"
+  ansible.builtin.user:
+    name: "{{ GRAFANA_USER }}"
+    force: "true"
+    state: "absent"
+
+- name: "Remove grafana system group"
+  ansible.builtin.group:
+    name: "{{ GRAFANA_GROUP }}"
+    state: "absent"

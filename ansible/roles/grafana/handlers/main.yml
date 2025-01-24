@@ -1,0 +1,14 @@
+---
+- name: "Restart grafana-server"
+  ansible.builtin.systemd:
+    daemon_reload: "true"
+    name: "grafana-server"
+    state: "restarted"
+    enabled: "true"
+  register: "grafana_restarted"
+
+- name: "Reload grafana-server"
+  ansible.builtin.systemd:
+    name: "grafana-server"
+    state: "restarted"
+  when: "grafana_restarted is not defined"

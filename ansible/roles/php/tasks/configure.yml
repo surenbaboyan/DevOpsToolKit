@@ -1,0 +1,67 @@
+---
+- name: "Php and nginx configurations"
+  block:  
+    - name: "PHP configurations"
+      tags: "conf_php"
+      block:
+        - name: "Set pm value"
+          ansible.builtin.lineinfile:
+            path: "/etc/php/{{ PHP_VERSION }}/fpm/pool.d/www.conf"
+            regexp: "^pm ="
+            line: "pm = {{ PM }}"
+
+        - name: "Set pm.max_children value"
+          ansible.builtin.lineinfile:
+            path: "/etc/php/{{ PHP_VERSION }}/fpm/pool.d/www.conf"
+            regexp: "^pm.max_children ="
+            line: "pm.max_children = {{ MAX_CHILDREN }}"
+
+        - name: "Set pm.start_servers value"
+          ansible.builtin.lineinfile:
+            path: "/etc/php/{{ PHP_VERSION }}/fpm/pool.d/www.conf"
+            regexp: "^pm.start_servers ="
+            line: "pm.start_servers = {{ START_SERVERS }}"
+
+        - name: "Set pm.min_spare_servers value"
+          ansible.builtin.lineinfile:
+            path: "/etc/php/{{ PHP_VERSION }}/fpm/pool.d/www.conf"
+            regexp: "^pm.min_spare_servers ="
+            line: "pm.min_spare_servers = {{ MIN_SPARE_SERVERS }}"
+
+        - name: "Set pm.max_spare_servers value"
+          ansible.builtin.lineinfile:
+            path: "/etc/php/{{ PHP_VERSION }}/fpm/pool.d/www.conf"
+            regexp: "^pm.max_spare_servers ="
+            line: "pm.max_spare_servers = {{ MAX_SPARE_SERVERS }}"
+
+        - name: "Set pm.max_requests value"
+          ansible.builtin.lineinfile:
+            path: "/etc/php/{{ PHP_VERSION }}/fpm/pool.d/www.conf"
+            regexp: "^;pm.max_requests ="
+            line: "pm.max_requests = {{ MAX_REQUESTS }}"
+
+        - name: "Configure php.ini conf file"
+          template:
+            src: "php.ini.j2"
+            dest: "/etc/php/{{ PHP_VERSION }}/fpm/php.ini"
+
+        - name: "Configure php-fpm conf file"
+          template:
+            src: "php-fpm.conf.j2"
+            dest: "/etc/php/{{ PHP_VERSION }}/fpm/php-fpm.conf"
+
+    - name: "Nginx configurations"
+      tags: "conf_nginx" 
+      block:
+        - name: "Check if Nginx is installed"
+          ansible.builtin.stat:
+            path: "/usr/sbin/nginx"
+          register: nginx_installed
+
+        - name: "Copy fastcgi.conf"
+          ansible.builtin.copy:
+            src: "fastcgi.conf"
+            dest: "/etc/nginx/fastcgi.conf"
+          notify: "Restart nginx"
+          when: nginx_installed.stat.exists
+  notify: "Restart php-fpm"

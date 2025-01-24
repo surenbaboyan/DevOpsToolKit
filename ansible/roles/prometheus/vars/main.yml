@@ -1,0 +1,545 @@
+---
+# vars file for prometheus_install
+PROMETHEUS_ALERT_RULES:
+  - alert: ExporterJobDown
+    for: 1m
+    expr: 'up == 0'
+    labels:
+      severity: critical
+      alerttype: SystemServices
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      description: '{% raw %}{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minutes.{% endraw %}'
+      summary: '{% raw %}On instance {{ $labels.instance }} {{ $labels.job }} job down{% endraw %}'
+
+  - alert: InstanceHasRebooted
+    expr: time() - node_boot_time_seconds < 60
+    labels:
+      severity: info
+      alerttype: SystemServices
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: '{% raw %}Instance {{ $labels.instance }} has rebooted .{% endraw %}'
+      description: '{% raw %}Instance {{ $labels.instance }} has rebooted {{ $value | printf "%.0f" }} seconds ago{% endraw %}'
+
+  - alert: HostFilesystemAlmostOutOfSpace
+    expr: (node_filesystem_avail_bytes * 100) / node_filesystem_size_bytes < 15
+    for: 2m
+    labels:
+      severity: warning
+      alerttype: system
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: '{% raw %}Instance {{ $labels.instance }} has less than 15% disk space left{% endraw %}'
+      description: "{% raw %}Disk is almost full (< 15% left)\n\t
+        *Disk Space* = `{{ printf \"node_filesystem_size_bytes{instance='%s',mountpoint='/'}\" .Labels.instance | query | first | value | humanize1024 }}`\n\t
+        *Available Space* = `{{ printf \"node_filesystem_avail_bytes{instance='%s',mountpoint='/'}\" .Labels.instance | query | first | value | humanize1024 }}`{% endraw %}"
+
+  - alert: HostFilesystemAlmostOutOfSpace
+    expr: (node_filesystem_avail_bytes * 100) / node_filesystem_size_bytes < 5
+    for: 2m
+    labels:
+      severity: critical
+      alerttype: system
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: '{% raw %}Instance {{ $labels.instance }} has less than 5% disk space left{% endraw %}'
+      description: "{% raw %}Disk is almost full (< 5% left)\n\t
+        *Disk Space* = `{{ printf \"node_filesystem_size_bytes{instance='%s',mountpoint='/'}\" .Labels.instance | query | first | value | humanize1024 }}`\n\t
+        *Available Space* = `{{ printf \"node_filesystem_avail_bytes{instance='%s',mountpoint='/'}\" .Labels.instance | query | first | value | humanize1024 }}`{% endraw %}"
+
+  - alert: HostUnusualDiskReadRate
+    expr: (sum by (instance) (rate(node_disk_read_bytes_total[2m])) / 1024 / 1024 > 10)
+    for: 2m
+    labels:
+      severity: warning
+      alerttype: system
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: '{% raw %}On Instance {{ $labels.instance }} unusual disk read rate{% endraw %}'
+      description: "{% raw %}On Instance {{ $labels.instance }} disk is probably reading too much data (> 10 MB/s)\n\t  *Value* = `{{ printf \"rate(node_disk_read_bytes_total{instance='%s'}[2m])\" .Labels.instance | query | first | value | humanize1024 }}`{% endraw %}"
+
+  - alert: HostUnusualDiskWriteRate
+    expr: (sum by (instance) (rate(node_disk_written_bytes_total[2m])) / 1024 / 1024 > 10)
+    for: 2m
+    labels:
+      severity: warning
+      alerttype: system
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: '{% raw %}On Instance {{ $labels.instance }} unusual disk write rate{% endraw %}'
+      description: "{% raw %}On Instance {{ $labels.instance }} disk is probably writing too much data (> 10 MB/s)\n\t  *Value* = `{{ printf \"rate(node_disk_written_bytes_total{instance='%s'}[2m])\" .Labels.instance | query | first | value | humanize1024 }}`{% endraw %}"
+
+  - alert: HostHighCpuLoad
+    expr: (sum by (instance) (avg by (mode, instance) (rate(node_cpu_seconds_total{mode!="idle"}[1m]))) > 0.8 ) * on(instance) group_left (nodename) node_uname_info{nodename=~".+"}
+    for: 2m
+    labels:
+      severity: warning
+      alerttype: system
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: '{% raw %}On Instance {{ $labels.instance }} high CPU load{% endraw %}'
+      description: "{% raw %}CPU load is > 80%{% endraw %}"
+
+  - alert: HostHighCpuLoad
+    expr: (sum by (instance) (avg by (mode, instance) (rate(node_cpu_seconds_total{mode!="idle"}[1m]))) > 0.95 ) * on(instance) group_left (nodename) node_uname_info{nodename=~".+"}
+    for: 2m
+    labels:
+      severity: critical
+      alerttype: system
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: '{% raw %}On Instance {{ $labels.instance }} high CPU load{% endraw %}'
+      description: "{% raw %}CPU load is > 95%{% endraw %}"
+
+  - alert: HostHighCpuLoadAverage
+    expr: max(node_load5) by (instance) > (count by (instance)(node_cpu_seconds_total{mode="idle"}*0.7))
+    for: 5m
+    labels:
+      severity: warning
+      alerttype: system
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: '{% raw %}On Instance {{ $labels.instance }} CPU load Average is too high[5m]{% endraw %}'
+      description: "{% raw %}CPU load Average is high [1m 5m 15m]: `[{{ printf \"max(node_load1{instance='%s'}) by (instance)\" .Labels.instance | query | first | value }} {{ printf \"max(node_load5{instance='%s'}) by (instance)\" .Labels.instance | query | first | value }} {{ printf \"max(node_load15{instance='%s'}) by (instance)\" .Labels.instance | query | first | value }}]`, #of CPUs `{{ printf \"count by (instance)(node_cpu_seconds_total{instance='%s',mode='idle'})\" .Labels.instance | query | first | value }}`{% endraw %}"
+
+  - alert: HostOutOfMemory
+    expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 < 10) * on(instance) group_left (nodename) node_uname_info{nodename=~".+"}
+    for: 5m
+    labels:
+      severity: warning
+      alerttype: system
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: '{% raw %}Instance {{ $labels.instance }} out of memory{% endraw %}'
+      description: "{% raw %}Instance memory is filling up (< 10% left)\n\t  
+        *Total Memory* = `{{ printf \"node_memory_MemTotal_bytes{instance='%s'}\" .Labels.instance | query | first | value | humanize1024 }}`\n\t
+        *Available Memory* = `{{ printf \"node_memory_MemAvailable_bytes{instance='%s'}\" .Labels.instance | query | first | value | humanize1024 }}`{% endraw %}"
+
+  - alert: HostOutOfMemory
+    expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 < 5) * on(instance) group_left (nodename) node_uname_info{nodename=~".+"}
+    for: 2m
+    labels:
+      severity: critical
+      alerttype: system
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: '{% raw %}Instance {{ $labels.instance }} out of memory{% endraw %}'
+      description: "{% raw %}Instance memory is filling up (< 5% left)\n\t  
+        *Total Memory* = `{{ printf \"node_memory_MemTotal_bytes{instance='%s'}\" .Labels.instance | query | first | value | humanize1024 }}`\n\t
+        *Available Memory* = `{{ printf \"node_memory_MemAvailable_bytes{instance='%s'}\" .Labels.instance | query | first | value | humanize1024 }}`{% endraw %}"
+
+  - alert: HostUnusualNetworkThroughputIn
+    expr: (sum by (instance) (rate(node_network_receive_bytes_total[1m])) / 1024 / 1024 > 5)
+    for: 1m
+    labels:
+      severity: warning
+      alerttype: system
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: '{% raw %}On Instance {{ $labels.instance }} network interfaces are probably receiving too much data{% endraw %}'
+      description: "{% raw %}On Instance {{ $labels.instance }} network interfaces are probably receiving too much data (> 5 MB/s)\n\t  *Value* = `{{ printf \"rate(node_network_receive_bytes_total{instance='%s'}[1m])\" .Labels.instance | query | first | value | humanize1024 }}`{% endraw %}"
+
+  - alert: HostUnusualNetworkThroughputOut
+    expr: (sum by (instance) (rate(node_network_transmit_bytes_total[1m])) / 1024 / 1024 > 5)
+    for: 1m
+    labels:
+      severity: warning
+      alerttype: system
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: '{% raw %}On Instance {{ $labels.instance }} network interfaces are probably sending too much data{% endraw %}'
+      description: "{% raw %}On Instance {{ $labels.instance }} network interfaces are probably sending too much data (> 5 MB/s)\n\t  *Value* = `{{ printf \"rate(node_network_transmit_bytes_total{instance='%s'}[1m])\" .Labels.instance | query | first | value | humanize1024 }}`{% endraw %}"
+
+  - alert: ServiceRestarted
+    expr: time() - node_systemd_unit_start_time_seconds < 30
+    labels:
+      severity: info
+      alerttype: SystemServices
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: '{% raw %}On Instance {{ $labels.instance }} {{ $labels.name }} has been restarted{% endraw %}'
+      description: '{% raw %}{{ $labels.name }} restarted {{ $value | printf "%.0f" }} seconds ago{% endraw %}'
+
+  - alert: ServiceStopped
+    expr: node_systemd_unit_state{state="inactive"} == 1
+    labels:
+      severity: critical
+      alerttype: SystemServices
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: '{% raw %}On Instance {{ $labels.instance }} {{ $labels.name }} stopped{% endraw %}'
+      description: '{% raw %}{{ $labels.name }} stopped{% endraw %}'
+
+  - alert: ServiceFailed
+    expr: node_systemd_unit_state{state="failed"} == 1
+    labels:
+      severity: critical
+      alerttype: SystemServices
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: '{% raw %}On Instance {{ $labels.instance }} {{ $labels.name }} failed{% endraw %}'
+      description: '{% raw %}{{ $labels.name }} failed{% endraw %}'
+
+  - alert: ServiceSupervisorTaskProblem
+    expr: avg_over_time(node_supervisord_up[3m]) == 0
+    for: 3m
+    labels:
+      severity: critical
+      alerttype: SystemServices
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}On Instance {{ $labels.instance }} supervisor task {{ $labels.name }} has some problem!{% endraw %}"
+      description: "Supervisor job has problem or it`s stopped"
+
+  - alert: ServiceSupervisorTaskStateStopped
+    expr: node_supervisord_state == 0
+    for: 10s
+    labels:
+      severity: critical
+      alerttype: ServiceSupervisorTask
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}On Instance {{ $labels.instance }} supervisor task {{ $labels.name }} is state STOPPED!{% endraw %}"
+      description: "The process has been stopped due to a stop request or has never been started.\n\t *State:* `STOPPED`"
+
+  - alert: ServiceSupervisorTaskStateStarting
+    expr: node_supervisord_state == 10
+    for: 10s
+    labels:
+      severity: warning
+      alerttype: ServiceSupervisorTask
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}On Instance {{ $labels.instance }} supervisor task {{ $labels.name }} is state STARTING!{% endraw %}"
+      description: "The process is starting due to a start request.\n\t *State:* `STARTING`"
+
+  - alert: ServiceSupervisorTaskStateBackoff
+    expr: node_supervisord_state == 30
+    for: 10s
+    labels:
+      severity: critical
+      alerttype: ServiceSupervisorTask
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}On Instance {{ $labels.instance }} supervisor task {{ $labels.name }} is state BACKOFF!{% endraw %}"
+      description: "The process entered the STARTING state but subsequently exited too quickly (before the time defined in startsecs) to move to the RUNNING state.\n\t *State:* `BACKOFF`"
+
+  - alert: ServiceSupervisorTaskStateStopping
+    expr: node_supervisord_state == 40
+    for: 10s
+    labels:
+      severity: critical
+      alerttype: ServiceSupervisorTask
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}On Instance {{ $labels.instance }} supervisor task {{ $labels.name }} is state STOPPING!{% endraw %}"
+      description: "The process is stopping due to a stop request.\n\t *State:* `STOPPING`"
+
+  - alert: ServiceSupervisorTaskStateExited
+    expr: node_supervisord_state == 100
+    for: 10s
+    labels:
+      severity: critical
+      alerttype: ServiceSupervisorTask
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}On Instance {{ $labels.instance }} supervisor task {{ $labels.name }} is state EXITED!{% endraw %}"
+      description: "The process exited from the RUNNING state (expectedly or unexpectedly).\n\t *State:* `EXITED`"
+
+  - alert: ServiceSupervisorTaskStateFatal
+    expr: node_supervisord_state == 200
+    for: 10s
+    labels:
+      severity: critical
+      alerttype: ServiceSupervisorTask
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}On Instance {{ $labels.instance }} supervisor task {{ $labels.name }} is state FATAL!{% endraw %}"
+      description: "The process could not be started successfully.\n\t *State:* `FATAL`"
+
+  - alert: ServiceSupervisorTaskStateUnknown
+    expr: node_supervisord_state == 1000
+    for: 10s
+    labels:
+      severity: critical
+      alerttype: ServiceSupervisorTask
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}On Instance {{ $labels.instance }} supervisor task {{ $labels.name }} is state UNKNOWN!{% endraw %}"
+      description: "The process is in an unknown state (supervisord programming error).\n\t *State:* `UNKNOWN`"
+
+  - alert: NginxHighHttp4xxErrorRate
+    expr: sum(rate(nginx_http_response_count_total{status=~"^4.."}[1m])) by(instance) / sum(rate(nginx_http_response_count_total[1m])) by(instance) * 100 > 20
+    for: 1m
+    labels:
+      severity: warning
+      alerttype: ServiceNginx
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Nginx high HTTP 4xx error rate (instance {{ $labels.instance }}){% endraw %}"
+      description: "{% raw %}Too many HTTP requests with status 4xx (> 20%)\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: NginxHighHttp5xxErrorRate
+    expr: sum(rate(nginx_http_response_count_total{status=~"^5.."}[1m])) by(instance) / sum(rate(nginx_http_response_count_total[1m])) by(instance) * 100 > 5
+    for: 1m
+    labels:
+      severity: warning
+      alerttype: ServiceNginx
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Nginx high HTTP 5xx error rate (instance {{ $labels.instance }}){% endraw %}"
+      description: "{% raw %}Too many HTTP requests with status 5xx (> 5%)\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: NginxLatencyHigh
+    expr: histogram_quantile(0.99,sum(rate(nginx_http_response_time_seconds_hist_bucket[2m])) by (instance,le)) > 5
+    for: 1m
+    labels:
+      severity: warning
+      alerttype: ServiceNginx
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Nginx latency high (instance {{ $labels.instance }}){% endraw %}"
+      description: "{% raw %}Nginx p99 latency is higher than 3 seconds\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: NginxHighNumberActiveConnections
+    expr: nginx_connections_active > 1000
+    for: 3m
+    labels:
+      severity: critical
+      alerttype: ServiceNginx
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Nginx high number active connections on the host {{ $labels.instance }} for more than 3 minutes {% endraw %}"
+      description: "{% raw %}Nginx high number active connections\n  VALUE = {{ $value }} {% endraw %}"
+
+  - alert: NginxNotAllConnectionsAreHandled
+    expr: rate(nginx_connections_handled[5m]) / rate(nginx_connections_accepted[5m]) < 1
+    for: 2m
+    labels:
+      severity: critical
+      alerttype: ServiceNginx
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Nginx does not handle all accept connections on the host {{ $labels.instance }} for more than 3 minutes{% endraw %}"
+      description: "{% raw %}Nginx issue with handling connections\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: PhpFpmHighNumberAcceptedConnections
+    expr: rate(php_fpm_accepted_connections_total[5m]) > 30
+    for: 3m
+    labels:
+      severity: critical
+      alerttype: ServicePhpFpm
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}PHP-FPM high number accepted connections(30con/s) on the host {{ $labels.instance }}{% endraw %}"
+      description: "{% raw %}PHP-FPM number accepted connections is {{ $value }}/s for more than 3 minutes{% endraw %}"
+
+  - alert: PhpFpmNumberMaximumActiveProcesses
+    expr: increase(php_fpm_max_active_processes[30s]) > 0
+    for: 10s
+    labels:
+      severity: warning
+      alerttype: ServicePhpFpm
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "PHP-FPM number maximum active processes is increasing"
+      description: "{% raw %}PHP-FPM number maximum of active processes is increasing on the host {{ $labels.instance }} for the last 10 seconds{% endraw %}"
+
+  - alert: PhpFpmMaxChildrenReached
+    expr: php_fpm_max_children_reached > 0
+    for: 0m
+    labels:
+      severity: warning
+      alerttype: ServicePhpFpm
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}PHP-FPM max-children reached on the host {{ $labels.instance }}{% endraw %}"
+      description: "{% raw %}PHP-FPM reached max children - {{ $labels.instance }}\n  VALUE = {{ $value }}\n{% endraw %}"
+
+  - alert: ElasticsearchHealthyNodes
+    expr: elasticsearch_cluster_health_number_of_nodes < 2
+    for: 0m
+    labels:
+      severity: critical
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch running on less than 2 nodes{% endraw %}"
+      description: "{% raw %}There are only {{$value}} < 2 Elasticsearch nodes running{% endraw %}"
+
+  - alert: ElasticsearchHeapTooHigh
+    expr: elasticsearch_jvm_memory_used_bytes{area="heap"} / elasticsearch_jvm_memory_max_bytes{area="heap"} > 0.9
+    for: 15m
+    labels:
+      severity: critical
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch node {{ $labels.instance }} heap usage is high{% endraw %}"
+      description: "The heap usage is over 90% for 15m"
+
+  - alert: ElasticsearchDiskOutOfSpace
+    expr: elasticsearch_filesystem_data_available_bytes / elasticsearch_filesystem_data_size_bytes * 100 < 10
+    for: 2m
+    labels:
+      severity: critical
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch disk out of space on {{ $labels.instance }} node {% endraw %}"
+      description: "{% raw %}The disk usage is over 90%\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: ElasticsearchDiskSpaceLow
+    expr: elasticsearch_filesystem_data_available_bytes / elasticsearch_filesystem_data_size_bytes * 100 < 20
+    for: 2m
+    labels:
+      severity: warning
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch disk space low on {{ $labels.instance }} node {% endraw %}"
+      description: "{% raw %}The disk usage is over 80%\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: ElasticsearchClusterRed
+    expr: elasticsearch_cluster_health_status{color="red"} == 1
+    for: 0m
+    labels:
+      severity: critical
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch Cluster Red {{ $labels.instance }}{% endraw %}"
+      description: "{% raw %}Elastic Cluster Red status\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: ElasticsearchClusterYellow
+    expr: elasticsearch_cluster_health_status{color="yellow"} == 1
+    for: 0m
+    labels:
+      severity: warning
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch Cluster Yellow {{ $labels.instance }}{% endraw %}"
+      description: "{% raw %}Elastic Cluster Yellow status\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: ElasticsearchRelocatingShards
+    expr: elasticsearch_cluster_health_relocating_shards > 0
+    for: 0m
+    labels:
+      severity: info
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch relocating shards {{ $labels.instance }}{% endraw %}"
+      description: "{% raw %}Elasticsearch is relocating shards\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: ElasticsearchRelocatingShardsTooLong
+    expr: elasticsearch_cluster_health_relocating_shards > 0
+    for: 15m
+    labels:
+      severity: warning
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch relocating shards too long {{ $labels.instance }}{% endraw %}"
+      description: "{% raw %}Elasticsearch has been relocating shards for 15min\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: ElasticsearchInitializingShards
+    expr: elasticsearch_cluster_health_initializing_shards > 0
+    for: 0m
+    labels:
+      severity: info
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch initializing shards {{ $labels.instance }}{% endraw %}"
+      description: "{% raw %}Elasticsearch is initializing shards\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: ElasticsearchInitializingShards
+    expr: elasticsearch_cluster_health_initializing_shards > 0
+    for: 15m
+    labels:
+      severity: warning
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch initializing shards too long {{ $labels.instance }}{% endraw %}"
+      description: "{% raw %}Elasticsearch has been initializing shards for 15 min\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: ElasticsearchUnassignedShards
+    expr: elasticsearch_cluster_health_unassigned_shards > 0
+    for: 0m
+    labels:
+      severity: critical
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch unassigned shards {{ $labels.instance }}{% endraw %}"
+      description: "{% raw %}Elasticsearch has unassigned shards\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: ElasticsearchPendingTasks
+    expr: elasticsearch_cluster_health_number_of_pending_tasks > 0
+    for: 15m
+    labels:
+      severity: warning
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch pending tasks {{ $labels.instance }}{% endraw %}"
+      description: "{% raw %}Elasticsearch has pending tasks. Cluster works slowly.\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: ElasticsearchNoNewDocuments
+    expr: increase(elasticsearch_indices_indexing_index_total{es_data_node="true"}[10m]) < 1
+    for: 0m
+    labels:
+      severity: warning
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch no new documents {{ $labels.instance }}{% endraw %}"
+      description: "{% raw %}No new documents for 10 min!\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: ElasticsearchHighIndexingLatency
+    expr: elasticsearch_indices_indexing_index_time_seconds_total / elasticsearch_indices_indexing_index_total > 0.0005
+    for: 10m
+    labels:
+      severity: warning
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch High Indexing Latency {{ $labels.instance }}{% endraw %}"
+      description: "{% raw %}The indexing latency on Elasticsearch cluster is higher than the threshold.\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: ElasticsearchHighIndexingRate
+    expr: sum(rate(elasticsearch_indices_indexing_index_total[1m]))> 10000
+    for: 5m
+    labels:
+      severity: warning
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch High Indexing Rate {{ $labels.instance }}{% endraw %}"
+      description: "{% raw %}The indexing rate on Elasticsearch cluster is higher than the threshold.\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: ElasticsearchHighQueryRate
+    expr: sum(rate(elasticsearch_indices_search_query_total[1m])) > 100
+    for: 5m
+    labels:
+      severity: warning
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch High Query Rate {{ $labels.instance }}{% endraw %}"
+      description: "{% raw %}The query rate on Elasticsearch cluster is higher than the threshold.\n  VALUE = {{ $value }}{% endraw %}"
+
+  - alert: ElasticsearchHighQueryLatency
+    expr: elasticsearch_indices_search_fetch_time_seconds / elasticsearch_indices_search_fetch_total > 1
+    for: 5m
+    labels:
+      severity: warning
+      alerttype: Elasticsearch
+    annotations:
+      instance: '{% raw %}{{ $labels.instance }}{% endraw %}'
+      summary: "{% raw %}Elasticsearch High Query Latency {{ $labels.instance }}{% endraw %}"
+      description: "{% raw %}The query latency on Elasticsearch cluster is higher than the threshold.\n  VALUE = {{ $value }}{% endraw %}"

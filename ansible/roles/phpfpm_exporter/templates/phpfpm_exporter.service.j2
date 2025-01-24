@@ -1,0 +1,9 @@
+[Unit]
+Description = PHP-FPM Prometheus Exporter
+
+[Service]
+SyslogIdentifier = phpfpm_exporter
+ExecStart = /{{ PHPFPM_EXPORTER_BINARY_INSTALL_DIR }}/phpfpm_exporter --phpfpm.socket-paths /run/php/php-fpm.sock
+
+[Install]
+WantedBy = multi-user.target

@@ -1,0 +1,31 @@
+[Unit]
+Description=Prometheus Node Exporter
+After=network-online.target
+
+[Service]
+Type=simple
+User={{ NODE_EXPORTER_SYSTEM_USER }}
+Group={{ NODE_EXPORTER_SYSTEM_GROUP }}
+ExecStart={{ NODE_EXPORTER_BINARY_INSTALL_DIR }}/node_exporter \
+{% for collector in node_exporter_enabled_collectors -%}
+{%   if not collector is mapping %}
+    --collector.{{ collector }} \
+{%   else -%}
+{%     set name, options = (collector.items()|list)[0] -%}
+    --collector.{{ name }} \
+{%     for k,v in options|dictsort %}
+    --collector.{{ name }}.{{ k }}={{ v }} \
+{%     endfor -%}
+{%   endif -%}
+{% endfor -%}
+{%   for ADDRESS in NODE_EXPORTER_WEB_LISTEN_ADDRESS %}
+    --web.listen-address={{ ADDRESS }}
+{%   endfor %}
+
+SyslogIdentifier=node_exporter
+Restart=always
+RestartSec=1
+StartLimitInterval=0
+
+[Install]
+WantedBy=multi-user.target

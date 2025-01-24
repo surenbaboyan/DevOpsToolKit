@@ -1,0 +1,14 @@
+#!/bin/bash
+
+mkdir -p {{ NVM_DIR }}
+wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v{{ NVM_VERSION }}/install.sh | NVM_DIR="{{ NVM_DIR }}" bash
+
+export NVM_DIR="{{ NVM_DIR }}"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+nvm install {{ NVM_NODE_VERSION }}
+
+# make the whatever version we just installed the default one
+nvm use {{ NVM_NODE_VERSION }}
+nvm alias default {{ NVM_NODE_VERSION }}

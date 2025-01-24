@@ -1,0 +1,7 @@
+- Find the "**MARIADB SERVICE ROLE**" and set values for the variables in the **common_settings**--->**vars**-->**main.yml** file.
+- Run the **play_apps.yml** Ansible playbook file using the command:
+  - **ansible-playbook play_apps.yml --tags=select_tags_separated_by_comma**
+  - To install MariaDB, use the **install,configure** tags.
+  - To create a new database, use the **configure** tag.
+  - To delete MariaDB, use the **remove** tag.
+- When MariaDB is proposed during the installation, type "yes".

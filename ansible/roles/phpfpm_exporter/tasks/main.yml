@@ -1,0 +1,13 @@
+---
+# tasks file for phpfpm_exporter
+- block:
+    - name: "Install phpfpm_exporter service"
+      ansible.builtin.include_tasks: "install.yml"
+  tags:
+    - "install"
+    - "update"
+
+- block:
+    - name: "Remove phpfpm_exporter service"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

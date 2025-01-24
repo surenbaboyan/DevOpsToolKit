@@ -1,0 +1,21 @@
+---
+- name: "Add User"
+  vars_prompt:
+    - name: "servers_groups"
+      prompt: "Please specify the servers, separated by commas"
+      private: no
+    - name: "username"
+      prompt: "Enter Username"
+      private: no
+    - name: "ssh_public_key"
+      prompt: "Enter SSH Public Key"
+      private: no
+  hosts: "{{servers_groups.split(',')}}"
+  become: "yes"
+
+
+  roles:
+    - role: create_user
+      vars:
+        USERNAME: "{{ username }}"
+        SSH_PUBLIC_KEY: "{{ ssh_public_key }}"

@@ -1,0 +1,14 @@
+---
+- name: "Restart logstash"
+  ansible.builtin.systemd:
+    daemon_reload: "true"
+    name: "logstash"
+    state: "restarted"
+    enabled: "true"
+  register: "logstash_restarted"
+
+- name: "Reload logstash"
+  ansible.builtin.systemd:
+    name: "logstash"
+    state: "restarted"
+  when: "logstash_restarted is not defined"

@@ -1,0 +1,55 @@
+---
+- name: "Copy CA certificate to Ansible control machine"
+  ansible.builtin.fetch:
+    src: "{{ ELASTICSEARCH_SSL_CERTIFICATE_PATH }}/{{ ELASTICSEARCH_CA_NAME }}"
+    dest: "/tmp/{{ ELASTICSEARCH_CA_NAME }}"
+    flat: "yes"
+    fail_on_missing: "yes"
+  when: "inventory_hostname in groups['elk-master-init-node']"
+
+- name: "Configure logstash"
+  block:
+  - name: "Ensure certificate directory exists"
+    ansible.builtin.file:
+      dest: "{{ LOGSTASH_SSL_CERTIFICATE_PATH }}"
+      state: "directory"
+      owner: "root"
+      group: "logstash"
+      mode: "750"
+
+  - name: "Copy CA certificate from Ansible control machine to logstash server"
+    ansible.builtin.copy:
+      src: "/tmp/{{ ELASTICSEARCH_CA_NAME }}"
+      dest: "{{ LOGSTASH_SSL_CERTIFICATE_PATH }}/{{ ELASTICSEARCH_CA_NAME }}"
+      owner: "root"
+      group: "logstash"
+      mode: '0660'
+
+  - name: "Extract certificate from elastic ca PKCS12 file"
+    ansible.builtin.shell:
+      cmd: "openssl pkcs12 -in {{ LOGSTASH_SSL_CERTIFICATE_PATH }}/{{ ELASTICSEARCH_CA_NAME }} -out {{ LOGSTASH_SSL_CERTIFICATE_PATH }}/{{ LOGSTASH_SSL_CERTIFICATE_NAME }} -nokeys -passin pass:{{ ELASTICSEARCH_CA_PASSWORD }}"
+
+  - name: "Change certificate ownership, group and permissions"
+    ansible.builtin.file:
+      path: "{{ LOGSTASH_SSL_CERTIFICATE_PATH }}/{{ LOGSTASH_SSL_CERTIFICATE_NAME }}"
+      owner: "root"
+      group: "logstash"
+      mode: "0660"
+
+  - name: "Config logstash pipeline"
+    tags: "logstash_pipeline_config"
+    ansible.builtin.template:
+      src: "logstash_pipeline.yml.j2"
+      dest: "{{ LOGSTASH_CONFIG_DIR }}/conf.d/logstash_pipeline.conf"
+      owner: "root"
+      group: "logstash"
+      mode: '0664'
+    notify: "Reload logstash"
+
+  - name: "Enable and start logstash service"
+    ansible.builtin.service:
+      name: "logstash"
+      state: "started"
+      enabled: "yes"
+  when: "inventory_hostname in groups['logstash']"
+  notify: "Restart logstash"

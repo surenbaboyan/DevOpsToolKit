@@ -1,0 +1,15 @@
+---
+- block:
+    - name: "Install dante"
+      ansible.builtin.include_tasks: "install.yml"
+  tags: "install"
+
+- block:
+    - name: "Configure dante"
+      ansible.builtin.include_tasks: "configure.yml"
+  tags: "configure"
+
+- block:
+    - name: "Remove dante"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

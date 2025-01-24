@@ -1,0 +1,16 @@
+---
+- name: "Remove User"
+  vars_prompt:
+  - name: "servers_groups"
+    prompt: "Please specify the servers, separated by commas"
+    private: no
+  - name: "username"
+    prompt: "Enter Username"
+    private: no
+  hosts: "{{servers_groups.split(',')}}"
+  become: "yes"
+
+  roles:
+    - role: remove_user
+      vars:
+        USERNAME: "{{ username }}"

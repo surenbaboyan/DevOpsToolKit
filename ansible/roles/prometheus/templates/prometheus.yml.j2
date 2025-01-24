@@ -1,0 +1,19 @@
+# my global config
+global:
+  {{ PROMETHEUS_GLOBAL | to_nice_yaml(indent=2,sort_keys=False) | indent(2, False) }}
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+           - localhost:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  - {{ PROMETHEUS_CONFIG_DIR }}/rules/*.rules
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  {{ PROMETHEUS_SCOPE_CONFIG | to_nice_yaml(indent=2,sort_keys=False) | indent(2,False) }}

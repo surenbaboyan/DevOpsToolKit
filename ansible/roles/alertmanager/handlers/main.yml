@@ -1,0 +1,15 @@
+---
+# handlers file for alertmanager
+- name: "Restart alertmanager"
+  ansible.builtin.systemd:
+    daemon_reload: "true"
+    name: "alertmanager"
+    state: "restarted"
+    enabled: "true"
+  register: "alertmanager_restarted"
+
+- name: "Reload alertmanager"
+  ansible.builtin.systemd:
+    name: "alertmanager"
+    state: "reloaded"
+  when: "alertmanager_restarted is not defined"

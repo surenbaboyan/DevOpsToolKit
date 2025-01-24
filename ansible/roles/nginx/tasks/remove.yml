@@ -1,0 +1,17 @@
+---
+- name: "Stop and disable Nginx service"
+  ansible.builtin.service:
+    name: "nginx"
+    state: "stopped"
+    enabled: "false"
+  ignore_errors: true
+
+- name: "Remove nginx via apt"
+  ansible.builtin.apt:
+    name: "nginx"
+    state: "absent"
+    purge: "true"
+    autoremove: "true"
+  register: "apt_action"
+  retries: "50"
+  until: "apt_action is success or ('E: Could not get lock /var/lib/dpkg/lock-frontend' not in apt_action.msg and '/var/lib/dpkg/lock-frontend' not in apt_action.msg)"

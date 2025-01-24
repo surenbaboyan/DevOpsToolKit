@@ -1,0 +1,7 @@
+---
+- name: "Dante Configuration"
+  ansible.builtin.template:
+    src: "danted.conf.j2"
+    dest: "{{ DANTE_CONF_FILE }}"
+  notify:
+    - "Reload dante"

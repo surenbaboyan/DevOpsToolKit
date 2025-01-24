@@ -1,0 +1,52 @@
+--- 
+- name: "Create nvm path"
+  ansible.builtin.file:
+    path: "/var/lib/nvm"
+    state: "directory"
+    mode: "o+rwx"
+
+- name: "Copy nvm installation script"
+  ansible.builtin.template:
+    src: "install_nvm.script.j2"
+    dest: "{{ NVM_DIR }}/install_nvm_{{ NVM_NODE_VERSION }}.sh"
+    mode: "u+x,g+x"
+
+- name: "Execute the nvm installation script"
+  ansible.builtin.shell: "./install_nvm_{{ NVM_NODE_VERSION }}.sh"
+  args:
+    chdir: "{{ NVM_DIR }}"
+
+- name: "Add the NVM's variables to all the profiles"
+  ansible.builtin.blockinfile:
+    path: "/etc/bash.bashrc"
+    insertbefore: "# If not running interactively"
+    block: |
+      export NVM_DIR="{{ NVM_DIR }}"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+             [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+- name: "Make the node binary always discoverable by symlinking to a system bin PATH that cron sees by default too"
+  ansible.builtin.file:
+    src: "{{ NVM_DIR }}/versions/node/v{{ NVM_NODE_VERSION }}/bin/node"
+    dest: "/usr/bin/node"
+    state: "link"
+    mode: "755"
+
+- name: "Remove original npm binary before symlink"
+  ansible.builtin.file:
+    path: "/usr/bin/npm"
+    state: "absent"
+
+- name: "Make the npm binary always discoverable by symlinking to a system bin PATH that cron sees by default too"
+  ansible.builtin.file:
+    src: "{{ NVM_DIR }}/versions/node/v{{ NVM_NODE_VERSION }}/bin/npm"
+    dest: "/usr/bin/npm"
+    state: "link"
+    mode: "755"
+
+- name: "Install laravel-echo-server globally"
+  tags: "install_laravel_echo_server"
+  community.general.npm:
+    name: "laravel-echo-server"
+    global: "true"
+  when: LARAVEL_ECHO_SERVER == "yes"

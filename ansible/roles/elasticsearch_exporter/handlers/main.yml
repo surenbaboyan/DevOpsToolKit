@@ -1,0 +1,15 @@
+---
+# handlers file for elasticsearch_exporter
+- name: "Restart elasticsearch_exporter"
+  ansible.builtin.systemd:
+    daemon_reload: "true"
+    name: "elasticsearch_exporter"
+    state: "restarted"
+    enabled: "true"
+  register: "elasticsearch_exporter_restarted"
+
+- name: "Reload elasticsearch_exporter"
+  ansible.builtin.systemd:
+    name: "elasticsearch_exporter"
+    state: "restarted"
+  when: "elasticsearch_exporter_restarted is not defined"

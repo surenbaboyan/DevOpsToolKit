@@ -1,0 +1,23 @@
+---
+- name: "Add the user with a bash shell, appending the group 'sudo' and 'www-data' to the user's groups"
+  ansible.builtin.user:
+    name: "{{ USERNAME }}"
+    shell: "/bin/bash"
+    groups: "{{ GROUPS }}"
+    append: "yes"
+
+- name: "Deploy SSH Key"
+  ansible.builtin.authorized_key:
+    user: "{{ USERNAME }}"
+    key: "{{ SSH_PUBLIC_KEY }}"
+    state: "present"
+
+- name: "Disable Password Authentication"
+  ansible.builtin.lineinfile:
+    dest: "/etc/ssh/sshd_config"
+    regexp: '(PasswordAuthentication.*?yes)'
+    line: "PasswordAuthentication no"
+    state: "present"
+    backup: "yes"
+  notify:
+    - "Restart ssh"

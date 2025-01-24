@@ -1,0 +1,38 @@
+- name: "Install Logging Systems"
+  vars_prompt:
+    - name: "SERVER_GROUPS"
+      prompt: "Please specify the servers, separated by commas "
+      private: no
+    - name: "ELK"
+      prompt: "Would you like to choose elk stack? Please type yes or no "
+      private: no
+    - name: "LOGSTASH"
+      prompt: "Would you like to choose logstash? Please type yes or no "
+      private: no
+    - name: "FILEBEAT"
+      prompt: "Would you like to choose filebeat? Please type yes or no "
+      private: no
+    - name: "METRICBEAT"
+      prompt: "Would you like to choose metricbeat? Please type yes or no "
+      private: no
+  hosts: "{{ SERVER_GROUPS.split(',')}} "
+  become: yes
+
+  roles:
+    - common_settings
+    - role: ELK
+      vars:
+        Elk: "{{ ELK }}"
+      when: Elk == "yes"
+    - role: logstash
+      vars:
+        Logstash: "{{ LOGSTASH }}"
+      when: Logstash == "yes"
+    - role: metricbeat
+      vars:
+        Metricbeat: "{{ METRICBEAT }}"
+      when: Metricbeat == "yes"
+    - role: filebeat
+      vars:
+        Filebeat: "{{ FILEBEAT }}"
+      when: Filebeat == "yes"

@@ -1,0 +1,15 @@
+--- 
+- block:
+    - name: "Install filebeat"
+      ansible.builtin.include_tasks: "install.yml"
+  tags: "install"
+
+- block:
+    - name: "Configure filebeat"
+      ansible.builtin.include_tasks: "configure.yml"
+  tags: "configure"
+
+- block:
+    - name: "Remove filebeat"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

@@ -1,0 +1,14 @@
+---
+# tasks file for node_exporter
+- block:
+    - name: "Install node_exporter service"
+      ansible.builtin.include_tasks: "install.yml"
+      tags:
+        - "service_file"
+        - "update"
+  tags: "install"
+
+- block:
+    - name: "Remove node_exporter service"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

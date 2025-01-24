@@ -1,0 +1,21 @@
+input {
+  beats {
+    port => {{ BEATS_PORT }}
+  }
+}
+
+filter {
+
+{{ lookup('file', 'filter') }}
+
+}
+
+output {
+  elasticsearch {
+        hosts => ["https://{{ ELASTICSEARCH_MASTER_INIT_NODE_IP }}:{{ ELASTICSEARCH_HTTP_PORT }}"]
+        cacert => '{{ LOGSTASH_SSL_CERTIFICATE_PATH }}/{{ LOGSTASH_SSL_CERTIFICATE_NAME }}'
+        user => elastic
+        password => "{{ ELASTICSEARCH_PASSWORD }}"
+        index => "log-%{[project][name]}-%{[project][service]}-%{+YYYY.MM.dd}"
+  }
+}

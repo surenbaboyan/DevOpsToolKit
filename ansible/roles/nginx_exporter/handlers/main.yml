@@ -1,0 +1,29 @@
+---
+# handlers file for nginx_exporter
+- name: "Restart nginx_exporter"
+  ansible.builtin.systemd:
+    daemon_reload: "true"
+    name: "nginx_exporter"
+    state: "restarted"
+    enabled: "true"
+  register: "nginx_exporter_restarted"
+
+- name: "Reload nginx_exporter"
+  ansible.builtin.systemd:
+    name: "nginx_exporter"
+    state: "restarted"
+  when: "nginx_exporter_restarted is not defined"
+
+- name: "Restart nginxlog_exporter"
+  ansible.builtin.systemd:
+    daemon_reload: "true"
+    name: "nginxlog_exporter"
+    state: "restarted"
+    enabled: "true"
+  register: "prometheus_nginxlog_exporter_restarted"
+
+- name: "Reload nginxlog_exporter"
+  ansible.builtin.systemd:
+    name: "nginxlog_exporter"
+    state: "restarted"
+  when: "prometheus_nginxlog_exporter_restarted is not defined"

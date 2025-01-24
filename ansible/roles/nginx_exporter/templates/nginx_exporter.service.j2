@@ -1,0 +1,15 @@
+[Unit]
+Description=nginx_exporter - Exporter for nginx metrics.
+Documentation=https://github.com/nginxinc/nginx-prometheus-exporter
+After=network.target
+
+[Service]
+User=nginx_exporter
+Group=nginx_exporter
+ExecStart={{ NGINX_EXPORTER_INSTALL_DIR }}/nginx_exporter --nginx.scrape-uri="http://localhost:{{ NGINX_METRIC_PORT }}/basic_status"
+
+SyslogIdentifier=nginx_exporter
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

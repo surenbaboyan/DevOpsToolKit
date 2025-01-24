@@ -1,0 +1,28 @@
+---
+- name: "Stop alertmanager service"
+  ansible.builtin.systemd:
+    name: "alertmanager.service"
+    state: "stopped"
+  ignore_errors: "true"
+
+- name: "Remove alertmanager binary, systemd unit files and directories"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "absent"
+  loop:
+    - "{{ ALERTMANAGER_CONFIG_DIR }}"
+    - "{{ ALERTMANAGER_DB_DIR }}"
+    - "{{ ALERTMANAGER_SERVICE_FILE_PATH }}/alertmanager.service"
+    - "{{ ALERTMANAGER_BINARY_INSTALL_DIR }}/alertmanager"
+    - "{{ ALERTMANAGER_BINARY_INSTALL_DIR }}/amtool"
+
+- name: "Remove the alertmanager system user"
+  ansible.builtin.user:
+    name: "alertmanager"
+    force: "true"
+    state: "absent"
+
+- name: "Remove alertmanager system group"
+  ansible.builtin.group:
+    name: "alertmanager"
+    state: "absent"

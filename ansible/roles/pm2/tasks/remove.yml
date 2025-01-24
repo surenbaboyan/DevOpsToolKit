@@ -1,0 +1,18 @@
+--- 
+- name: "Uninstall pm2-logrotate using PM2"
+  ansible.builtin.command: "pm2 uninstall pm2-logrotate"
+  become_user: "{{ DEPLOY_USER }}"
+
+- name: "Uninstall pm2"
+  community.general.npm:
+    name: "pm2"
+    state: "absent"
+    global: "true"
+
+- name: "Remove bin file of pm2"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "absent"
+  loop:
+    - "{{ NVM_DIR }}/versions/node/v{{ NVM_NODE_VERSION }}/bin/pm2"
+    - "{{ PM2_BIN_FILE }}"

@@ -1,0 +1,10 @@
+---
+- block:
+    - name: "Install pm2"
+      ansible.builtin.include_tasks: "install.yml"
+  tags: "install"
+
+- block:
+    - name: "Remove pm2"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

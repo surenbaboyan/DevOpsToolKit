@@ -1,0 +1,22 @@
+--- 
+- name: "Create MongoDB root user"
+  community.mongodb.mongodb_user:
+    login_port: "{{ MONGODB_PORT }}"
+    database: "{{ MONGODB_ADMIN_DB_NAME }}"
+    name: "{{ MONGODB_ROOT_USER }}"
+    password: "{{ MONGODB_ROOT_PASSWORD }}"
+    roles: "root"
+  tags: "root_user"
+
+- name: "Create MongoDB administrative user siteUserAdmin"
+  community.mongodb.mongodb_user:
+    login_user: "{{ MONGODB_ROOT_USER }}"
+    login_password: "{{ MONGODB_ROOT_PASSWORD }}"
+    login_port: "{{ MONGODB_PORT }}"
+    database: "{{ MONGODB_DATABASE_NAME }}"
+    name: "{{ MONGODB_DATABASE_USER }}"
+    password: "{{ MONGODB_DATABASE_USER_PASSWORD }}"
+    roles:
+      - { db: "admin", role: "readWrite" }
+      - { db: "{{ MONGODB_DATABASE_NAME }}", role: "readWrite" }
+  tags: "database"

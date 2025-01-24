@@ -1,0 +1,26 @@
+---
+- name: "Copy workers file"
+  ansible.builtin.template:
+    src: "supervisor-apps.conf.j2"
+    dest: "/etc/supervisor/conf.d/{{ item.NAME }}.conf"
+  loop: "{{ WORKERS }}"
+
+- name: "Update configuration file"
+  tags: "conf_file"
+  ansible.builtin.template:
+    src: "supervisord.conf.j2"
+    dest: "/etc/supervisor/supervisord.conf"
+  notify: "Restart supervisor"
+
+- name: "Update and reread workers then application was deployed"
+  block:
+  - name: "Reread all workers"
+    community.general.supervisorctl:
+      name: "all"
+      state: "present"
+
+  - name: "Restart all workers"
+    community.general.supervisorctl:
+      name: "all"
+      state: "restarted"
+  when: APPLICATION_DEPLOYED == "yes"

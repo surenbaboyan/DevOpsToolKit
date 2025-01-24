@@ -1,0 +1,60 @@
+--- 
+- name: Dump the database
+  ignore_errors: "yes"
+  command: >
+    mongodump
+    --host "{{ MONGODB_LOCALHOST }}"
+    --port "{{ MONGODB_PORT }}"
+    --out "{{ MONGODB_DUMPS_TARGET_PATH }}/{{ MONGODB_VERSION }}/{{ MONGODB_DATABASE_NAME }}-{{ lookup('pipe','date +%Y-%m-%d_%H-%M') }}"
+    --db "{{ MONGODB_DATABASE_NAME }}"
+
+- name: "Stop and disable MongoDB service"
+  ignore_errors: "yes"
+  ansible.builtin.service:
+    name: "mongod"
+    state: "stopped"
+    enabled: "false"
+ 
+- name: "Remove MongoDB package"
+  ansible.builtin.apt:
+    name: "mongodb-*"
+    state: "absent"
+    purge: "true"
+    autoremove: "true"
+  register: "apt_action"
+  retries: "50"
+  until: "apt_action is success or ('E: Could not get lock /var/lib/dpkg/lock-frontend' not in apt_action.msg and '/var/lib/dpkg/lock-frontend' not in apt_action.msg)"
+
+- name: "Remove MongoDB repository"
+  apt_repository:
+    repo: "deb https://repo.mongodb.org/apt/ubuntu {{ansible_distribution_release}}/mongodb-org/{{ MONGODB_VERSION }} multiverse"
+    state: "absent"
+
+- name: "Remove repo gpg key"
+  ansible.builtin.apt_key:
+    url: "https://www.mongodb.org/static/pgp/server-{{ MONGODB_VERSION }}.asc"
+    state: "absent"
+
+- name: "Remove pymongo"
+  ansible.builtin.pip:
+    name: "pymongo"
+    state: "absent"
+
+- name: "Remove python3-pip "
+  ansible.builtin.package:
+    name: "python3-pip"
+    state: "absent"
+
+- name: "Remove mongodb user"
+  ansible.builtin.user:
+    name: "mongodb"
+    state: "absent"
+
+- name: "Remove MongoDB DB and log files"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "absent"
+  loop:
+    - "{{ MONGODB_CONF_FILE}}"
+    - "{{ MONGODB_LOG_PATH }}"
+    - "{{ MONGODB_DATA_PATH }}"

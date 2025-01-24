@@ -1,0 +1,8 @@
+- Find the "**NGINX SERVICE ROLE**" and set values for the variables in the **common_settings**--->**vars**--->**main.yml** file.
+- Run the **play_apps.yml** Ansible playbook file using the command:
+  - **ansible-playbook play_apps.yml --tags=select_tags_separated_by_comma**
+  - To install Nginx, use the **install,configure** tags. 
+  - To update the config file, use the **conf_file** tag.
+  - To update or add certifcates, use the **ssl_certificate** tag.
+  - To delete Nginx, use the **remove** tag.
+- When Nginx is proposed during the installation, type "yes".

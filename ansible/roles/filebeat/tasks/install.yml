@@ -1,0 +1,48 @@
+---
+- name: "Ensure required dependencies are present."
+  ansible.builtin.apt:
+    name: "{{ FILEBEAT_DEPENDENCIES }}"
+    state: "present"
+    update_cache: "yes"
+  register: "apt_action"
+  retries: "50"
+  until: "apt_action is success or ('E: Could not get lock /var/lib/dpkg/lock-frontend' not in apt_action.msg and '/var/lib/dpkg/lock-frontend' not in apt_action.msg)"
+
+- name: "Add Elasticsearch apt key."
+  ansible.builtin.apt_key:
+    url: "https://artifacts.elastic.co/GPG-KEY-elasticsearch"
+    id: "46095ACC8548582C1A2699A9D27D666CD88E42B4"
+    state: "present"
+
+- name: "Add Filebeat repository."
+  ansible.builtin.apt_repository:
+    repo: 'deb https://artifacts.elastic.co/packages/{{ FILEBEAT_VERSION_FAMILY }}/apt stable main'
+    state: "present"
+
+- name: "Install Filebeat."
+  ansible.builtin.package:
+    name: "filebeat={{ FILEBEAT_VERSION }}"
+    state: "present"
+    update_cache: "yes"
+  register: "apt_action"
+  retries: "50"
+  until: "apt_action is success or ('E: Could not get lock /var/lib/dpkg/lock-frontend' not in apt_action.msg and '/var/lib/dpkg/lock-frontend' not in apt_action.msg)"
+
+- name: "Ensure Filebeat is started and enabled at boot."
+  ansible.builtin.service:
+    name: "filebeat"
+    state: "started"
+    enabled: "true"
+  
+- name: "Create filebeat keystore if not existing yet"
+  ansible.builtin.shell:
+    cmd: "filebeat keystore create"
+
+- name: Fetch hostname and register the result
+  ansible.builtin.command: 'hostname'
+  register: hostname_result
+
+- name: "Add filebeat keystore hostname"
+  ansible.builtin.shell:
+    cmd: "filebeat keystore add HOSTNAME --stdin --force"
+    stdin: '{{ hostname_result.stdout }}'

@@ -1,0 +1,13 @@
+[program:{{ item.NAME }}]
+{% if item.NUMPROCS == "1" %}
+process_name={{ item.NAME }}
+{% else %}
+process_name=%(program_name)s_%(process_num)02d
+{% endif %}
+command={{ item.COMMAND }}
+{% for config in item.CONFIGURATIONS %}
+{{ config }}
+{% endfor %}
+user={{ SUPERVISOR_USER }}
+numprocs={{ item.NUMPROCS }}
+stdout_logfile={{ LOGFILE_PATH }}

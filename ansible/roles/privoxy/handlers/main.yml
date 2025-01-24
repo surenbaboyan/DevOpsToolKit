@@ -1,0 +1,5 @@
+---
+- name: "Restart privoxy"
+  ansible.builtin.service:
+    name: "privoxy"
+    state: "restarted"

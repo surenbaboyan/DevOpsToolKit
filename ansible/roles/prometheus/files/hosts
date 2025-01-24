@@ -1,0 +1,55 @@
+127.0.0.1     Prometheus
+
+172.26.59.60  CrawlerPlanet
+172.26.59.16  CrawlerSubway
+172.26.59.9   CrawlerReceiver
+172.26.59.4   CrawlerLiveOdds
+172.26.59.37  CrawlerLiveMarkets
+172.26.59.45  CrawlerLiveMatchesAndStats
+172.26.59.21  CrawlerSocket
+172.26.59.40  CrawlerPreLiveMarkets
+172.26.59.39  CrawlerPreLiveOdds
+172.26.59.14  CrawlerPreLiveMatches
+172.26.59.13  CrawlerPreLiveReceiver
+172.26.59.52  CrawlerPreLiveCompetitionsAndBookmakers
+
+172.26.59.25  SpiderStatic
+172.26.59.49  SpiderReceiver
+172.26.59.41  SpiderLiveMatchesAndStats
+172.26.59.62  SpiderLiveMarkets
+172.26.59.17  SpiderLiveOdds
+172.26.59.32  SpiderPreLiveReceiver
+172.26.59.43  SpiderPreLiveMarkets
+172.26.59.15  SpiderPreLiveOdds
+172.26.59.35  SpiderPreLiveMatches
+172.26.59.54  SpiderSubway
+
+172.26.59.10  Patio
+172.26.59.58  FastApp
+
+172.26.59.38  Gamester
+172.26.59.50  Gator
+172.26.59.19  Basket
+172.26.59.20  Stadium
+172.26.59.26  GreenPlanet
+172.26.59.12  GamesterHub
+172.26.59.28  ShopApp
+
+172.26.59.100 MoneyGem
+172.26.59.8   MoneyGemHelper
+172.26.59.44  ShaahinServices
+
+172.26.59.34  EsNode0
+172.26.59.18  EsNode1
+172.26.59.30  Kibana
+
+172.26.59.55  Runner1
+172.26.59.27  Runner2
+
+# The following lines are desirable for IPv6 capable hosts
+::1 ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts

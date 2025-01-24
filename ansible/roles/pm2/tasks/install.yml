@@ -1,0 +1,16 @@
+--- 
+- name: "Install Pm2"
+  ansible.builtin.npm:
+    name: "pm2"
+    global: "yes"
+
+- name: "Make the pm2 binary always discoverable by symlinking to a system bin PATH that cron sees by default too"
+  ansible.builtin.file:
+    src: "{{ NVM_DIR }}/versions/node/v{{ NVM_NODE_VERSION }}/bin/pm2"
+    dest: "{{ PM2_BIN_FILE }}"
+    state: "link"
+    mode: "755"
+
+- name: "Install pm2-logrotate using PM2"
+  ansible.builtin.command: "pm2 install pm2-logrotate"
+  become_user: "{{ DEPLOY_USER }}"

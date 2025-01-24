@@ -1,0 +1,56 @@
+---
+- name: "Create configuration"
+  ansible.builtin.template:
+    src: "metricbeat.yml.j2"
+    dest: "/etc/metricbeat/metricbeat.yml"
+  tags: "conf_file"
+  notify: "Restart metricbeat"
+
+- name: "Configure metricbeat modules"
+  block:
+  - name: "Enable metricbeat modules"
+    ansible.builtin.command:
+      cmd: "metricbeat modules enable {{ item }}"
+      creates: "/etc/metricbeat/modules.d/{{ item }}.yml"
+    loop: "{{ METRICBEAT_MODULES }}"
+
+  - name: "Update nginx module"
+    ansible.builtin.lineinfile:
+      path: "/etc/metricbeat/modules.d/nginx.yml"
+      regexp: "{{ item.From }}"
+      line: "{{ item.To }}"
+    with_items:
+      - { From: "#metricsets:", To: "  metricsets:" }
+      - { From: "#  - stubstatus", To: "    - stubstatus"}
+      - { From: "hosts:", To: '  hosts: ["http://localhost:8085"]' }
+      - { From: "#server_status_path:", To: '  server_status_path: "basic_status"' }
+    when: "'nginx' in METRICBEAT_MODULES"
+
+  - name: "Update php_fpm module"
+    ansible.builtin.lineinfile:
+      path: "/etc/metricbeat/modules.d/php_fpm.yml"
+      regexp: "hosts:"
+      line: '  hosts: ["http://{{ ansible_default_ipv4.address }}:8087"]'
+    when: "'php_fpm' in METRICBEAT_MODULES"
+
+  - name: "Update redis module"
+    ansible.builtin.lineinfile:
+      path: "/etc/metricbeat/modules.d/redis.yml"
+      regexp: "#password:"
+      line: '  password: "{{ REDIS_PASSWORD }}"'
+    when: "'redis' in METRICBEAT_MODULES"
+
+  - name: "Update mongodb module"
+    ansible.builtin.lineinfile:
+      path: "/etc/metricbeat/modules.d/mongodb.yml"
+      regexp: "{{ item.From }}"
+      line: "{{item.To}}"
+    with_items:
+      - { From: "#metricsets:", To: "  metricsets:" }
+      - { From: "#  - dbstats", To: "    - dbstats" }
+      - { From: "#  - status", To: "    - status" }
+      - { From: "#  - collstats", To: "    - collstats" }
+      - { From: "#  - metrics", To: "    - metrics" }
+    when: "'mongodb' in METRICBEAT_MODULES"
+  tags: "conf_modules"
+  notify: "Restart metricbeat"

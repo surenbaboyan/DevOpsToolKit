@@ -1,0 +1,24 @@
+---
+# tasks file for nginx_exporter
+- block:
+    - name: "Install nginx_exporter service"
+      ansible.builtin.include_tasks: "install.yml"
+      tags:
+        - "update_nginx_exporter"
+        - "install_nginx_exporter"
+        - "update_nginxlog_exporter"
+        - "install_nginxlog_exporter"
+  tags: "install"
+
+- block:
+    - name: "Configure nginx_exporter service"
+      ansible.builtin.include_tasks: "configure.yml"
+  tags: "configure"
+
+- block:
+    - name: "Remove nginx_exporter service"
+      ansible.builtin.include_tasks: "remove.yml"
+      tags:
+        - "remove_nginxlog_exporter"
+        - "remove_nginx_exporter"
+  tags: "remove"

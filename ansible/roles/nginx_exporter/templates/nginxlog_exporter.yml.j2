@@ -1,0 +1,10 @@
+listen:
+  port: {{ NGINXLOG_EXPORTER_LISTEN_PORT }}
+  metrics_endpoint: "/metrics"
+
+namespaces:
+  - name: nginx
+    parser: json
+    source:
+      files:
+        - /var/log/nginx/access.log

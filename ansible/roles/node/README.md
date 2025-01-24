@@ -1,0 +1,10 @@
+- Find the "**NODE SERVICE ROLE**" and set values for the variables in the **common_settings**--->**vars**--->**main.yml** file.
+- Run the Ansible playbook file (play_apps.yml) using the command:
+  - **ansible-playbook play_apps.yml --tags=select_tag**
+  - To install Node, use the **install** tag.
+  - To delete Node, use the **remove** tag.
+- When Node is proposed during the installation, type "yes".
+- If you want to install laravel echo server separately, set the variable **LARAVEL_ECHO_SERVER** yes in the **common_settings** node section.
+- Run the Ansible playbook file (play_apps.yml) using the command:
+  - **ansible-playbook play_apps.yml --tags="install_laravel_echo_server"**
+- When Node is proposed during the installation, type "yes".

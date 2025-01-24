@@ -1,0 +1,26 @@
+---
+- name: "Stop and disable danted service"
+  ansible.builtin.service:
+    name: "danted"
+    state: "stopped"
+    enabled: "false"
+  ignore_errors: true
+
+- name: "Remove dante"
+  ansible.builtin.apt:
+    name: "dante-server"
+    state: "absent"
+    purge: "true"
+
+- name: "Remove the user for dante proxy"
+  ansible.builtin.user:
+    name: "{{ DANTE_USER }}"
+    state: "absent"
+
+- name: "Remove Dante configuration and log files"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "absent"
+  loop:
+    - "{{ DANTE_CONF_FILE }}"
+    - "{{ DANTE_LOG_PATH }}"

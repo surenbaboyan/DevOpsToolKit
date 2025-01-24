@@ -1,0 +1,98 @@
+---
+- name: "Configure grafana"
+  block:
+    - name: "Create or update grafana main configuration file"
+      ansible.builtin.template:
+        src: "grafana.ini.j2"
+        dest: "{{ GRAFANA_CONF_FILE }}"
+        owner: "root"
+        group: "{{ GRAFANA_GROUP }}"
+        mode: "0644"
+      tags: "conf_file"
+
+    - name: "Create/Update datasources file (provisioning)"
+      ansible.builtin.copy:
+        dest: "{{ GRAFANA_PROVISIONING_CFG_DIR }}/datasources/datasources.yml"
+        content: |
+          apiVersion: 1
+          deleteDatasources: []
+          datasources:
+          {{ GRAFANA_DATASOURCES | to_nice_yaml }}
+        owner: "root"
+        group: "{{ GRAFANA_GROUP }}"
+        mode: "0640"
+      tags: "datasources"
+
+    - name: "Configure dashboards"
+      tags: "dashboards"
+      block:
+      - name: "Create/Update dashboards file (provisioning)"
+        ansible.builtin.copy:
+          dest: "{{ GRAFANA_PROVISIONING_CFG_DIR }}//dashboards/dashboards.yml"
+          content: |
+            apiVersion: 1
+            providers:
+              - name: 'default'
+                orgId: 1
+                folder: ''
+                type: file
+                options:
+                  path: "{{ GRAFANA_DATA_DIR }}/dashboards"
+          backup: false
+          owner: "root"
+          group: "{{ GRAFANA_GROUP }}"
+          mode: "0640"
+
+      - name: "Import dashboard from grafana.net"
+        tags: "dashboard_from_remote_src"
+        block:
+          - name: "Create local grafana dashboard directory"
+            ansible.builtin.tempfile:
+              state: "directory"
+            register: "__tmp_dashboards"
+            delegate_to: "localhost"
+            become: "false"
+
+          - name: "Download grafana dashboard from grafana.net to local directory"
+            ansible.builtin.get_url:
+              url: "https://grafana.com/api/dashboards/{{ item.dashboard_id }}/revisions/{{ item.revision_id }}/download"
+              dest: "{{ __tmp_dashboards.path }}/{{ item.dashboard_id }}.json"
+              mode: "0644"
+            delegate_to: "localhost"
+            register: "__download_dashboards"
+            until: "__download_dashboards is succeeded"
+            retries: "5"
+            delay: "2"
+            loop: "{{ GRAFANA_DASHBOARDS }}"
+
+          - name: "Set the correct data source name in the dashboard"
+            ansible.builtin.replace:
+              dest: "{{ __tmp_dashboards.path }}/{{ item.dashboard_id }}.json"
+              regexp: '"(?:\${)?DS_[A-Z0-9_-]+(?:})?"'
+              replace: '"{{ item.datasource }}"'
+            delegate_to: "localhost"
+            loop: "{{ GRAFANA_DASHBOARDS }}"
+
+          - name: "Import grafana dashboards"
+            ansible.builtin.copy:
+              src: "{{ item }}"
+              dest: "{{ GRAFANA_DATA_DIR }}/dashboards/{{ item | basename }}"
+              mode: "0640"
+              owner: "root"
+              group: "{{ GRAFANA_GROUP }}"
+            with_fileglob:
+              - "{{ __tmp_dashboards.path }}/*"
+
+      - name: "Import dashboard from local json file"
+        tags: "dashboard_from_local_src"
+        block:
+          - name: "Copy manual dashboard file"
+            ansible.builtin.copy:
+              src: "{{item.src}}"
+              dest: "{{ GRAFANA_DATA_DIR }}/dashboards/{{ item.src | basename }}"
+              mode: "0640"
+              owner: "root"
+              group: "{{ GRAFANA_GROUP }}"
+            loop:
+              - src: "dashboards/"
+  notify: "Reload grafana-server"

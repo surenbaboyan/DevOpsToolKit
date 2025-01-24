@@ -1,0 +1,17 @@
+[Unit]
+Description=Prometheus Elasticsearch Exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=root
+Group=root
+Type=simple
+ExecStart={{ ELASTICSEARCH_EXPORTER_BINARY_INSTALL_DIR }}/elasticsearch_exporter \
+  --es.ca {{ ELASTICSEARCH_SSL_CERTIFICATE_PATH }}/http_ca.crt \
+  --es.uri=https://elastic:{{ ELASTICSEARCH_PASSWORD }}@localhost:{{ ELASTICSEARCH_HTTP_PORT }} \
+  --web.listen-address=:{{ ELASTICSEARCH_EXPORTER_LISTEN_PORT }}
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

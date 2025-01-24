@@ -1,0 +1,9 @@
+- Find the "**REDIS SERVICE ROLE**" and set values for the variables in the **common_settings**--->**vars**--->**main.yml** file.
+- Run the **play_apps.yml**  Ansible playbook file using the command:
+  - **ansible-playbook play_apps.yml --tags=select_tags_separated_by_comma**
+  - To install Redis server and client, use the **install** tag.
+  - To install only the redis_cli, use the **redis_cli** tag.
+  - To update the config file, use the **conf_file** tag.
+  - To delete Redis, use the **remove** tag.
+  - To delete only the binaries, use the **remove_binaries** tag.
+- When Redis is proposed during the installation, type "yes".

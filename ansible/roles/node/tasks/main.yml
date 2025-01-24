@@ -1,0 +1,11 @@
+---
+- block:
+    - name: "Install node"
+      ansible.builtin.include_tasks: "install.yml"
+      tags: "install_laravel_echo_server"
+  tags: "install"
+
+- block:
+    - name: "Remove node"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

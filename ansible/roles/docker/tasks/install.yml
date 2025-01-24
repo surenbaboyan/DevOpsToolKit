@@ -1,0 +1,46 @@
+---
+- name: "Install packages needed for Docker"
+  ignore_errors: "yes"
+  ansible.builtin.apt:
+    name: "{{ DOCKER_PACKAGES }}"
+    state: "present"
+    update_cache: "yes"
+
+- name: "Get current OS architecture"
+  ansible.builtin.shell: "dpkg --print-architecture"
+  register: "OS_ARCHITECTURE"
+
+- name: "Get current OS release version"
+  ansible.builtin.shell: "lsb_release -cs"
+  register: "OS_RELEASE_VERSION"
+
+- name: "Get current OS distribution name"
+  ansible.builtin.shell: ". /etc/os-release && echo $ID"
+  register: "OS"
+
+- name: "Get current OS distribution version"
+  ansible.builtin.shell: ". /etc/os-release && echo $VERSION_ID"
+  register: "OS_VERSION_ID"
+
+- name: "Install the .deb packages"
+  ansible.builtin.apt:
+    deb: "https://download.docker.com/linux/{{ OS.stdout }}/dists/{{ OS_RELEASE_VERSION.stdout }}/pool/stable/{{OS_ARCHITECTURE.stdout}}/{{ item }}"
+  loop:
+    - "containerd.io_{{ DOCKER_CONTAINERD_VERSION }}_{{ OS_ARCHITECTURE.stdout }}.deb"
+    - "docker-ce-cli_{{ DOCKER_CE_CLI_VERSION }}~{{ OS.stdout }}.{{ OS_VERSION_ID.stdout }}~{{ OS_RELEASE_VERSION.stdout }}_{{ OS_ARCHITECTURE.stdout }}.deb"
+    - "docker-ce_{{ DOCKER_CE_VERSION }}~{{ OS.stdout }}.{{ OS_VERSION_ID.stdout }}~{{ OS_RELEASE_VERSION.stdout }}_{{ OS_ARCHITECTURE.stdout }}.deb"
+    - "docker-buildx-plugin_{{ DOCKER_BUILDX_PLUGIN_VERSION }}~{{ OS.stdout }}.{{ OS_VERSION_ID.stdout }}~{{ OS_RELEASE_VERSION.stdout }}_{{ OS_ARCHITECTURE.stdout }}.deb"
+    - "docker-compose-plugin_{{ DOCKER_COMPOSE_PLUGIN_VERSION }}~{{ OS.stdout }}.{{ OS_VERSION_ID.stdout }}~{{ OS_RELEASE_VERSION.stdout }}_{{ OS_ARCHITECTURE.stdout }}.deb"
+  ignore_errors: "yes"
+
+- name: "Start service docker"
+  ansible.builtin.service:
+    name: "docker"
+    state: "started"
+
+- name: "Add users to the Docker group"
+  ansible.builtin.user:
+    name: "{{ item }}"
+    append: "yes"
+    groups: "docker"
+  loop: "{{ DOCKER_USERS }}"

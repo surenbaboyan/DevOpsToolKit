@@ -1,0 +1,76 @@
+---
+- name: "Nginx configurations"
+  block:
+    - name: "Add new default conf file"
+      ansible.builtin.template:
+        src: "default.conf.j2"
+        dest: "/etc/nginx/sites-enabled/default.conf"
+
+    - name: "Configure nginx.conf file"
+      ansible.builtin.template:
+        src: "nginx.conf.j2"
+        dest: "/etc/nginx/nginx.conf"
+
+    - name: "Configure nginx metric status"
+      ansible.builtin.template:
+        src: "ng_status.conf.j2"
+        dest: "/etc/nginx/sites-enabled/ng_status.conf"
+      tags: "metric_file"
+      notify: "Restart nginx"
+
+    - name: "Copy logging conf"
+      ansible.builtin.copy:
+        src: "access_logging.conf"
+        dest: "/etc/nginx/conf.d/access_logging.conf"
+  tags: "conf_file"
+  notify: "Reload nginx"      
+
+- name: "Nginx with certificate"
+  block:
+    - name: "Update default.conf"
+      ansible.builtin.template:
+        src: "default.conf.j2"
+        dest: "/etc/nginx/sites-enabled/default.conf"
+
+    - name: "Create ssl directory"
+      ansible.builtin.file:
+        path: "/etc/nginx/ssl"
+        state: "directory"
+        mode: "0755"
+
+    - name: "Generate a Self Signed OpenSSL certificate"
+      block:
+        - name: "Ensure private key is present"
+          community.crypto.openssl_privatekey:
+            path: "/etc/nginx/ssl/nginx.key"
+            size: "2048"
+            mode: "0600"
+            type: "RSA"
+
+        - name: "Generate SSL"
+          community.crypto.x509_certificate:
+            path: "/etc/nginx/ssl/nginx.crt"
+            privatekey_path: "/etc/nginx/ssl/nginx.key"
+            provider: "selfsigned"
+            selfsigned_not_after: "+3650d" # this is the default
+            mode: "0644"
+      when: CERTIFICATE_MODE == "nginx"
+
+    - name: "Cloudflare configuration"
+      block:
+        - name: "Copy cloudflare cert files"
+          ansible.builtin.copy:
+            src: "{{ item }}"
+            dest: "/etc/nginx/ssl"
+          loop:
+            - nginx.crt
+            - nginx.key
+        - name: "Copy realip conf file"
+          template:
+            src: "realip-logging.conf.j2"
+            dest: "/etc/nginx/conf.d/realip-logging.conf"
+          when: REALIP_LOGGING == "yes"
+      when: CERTIFICATE_MODE == "cloudflare"
+  tags: "ssl_certificate"
+  when: WITH_CERTIFICATE == "yes"
+  notify: "Reload nginx"

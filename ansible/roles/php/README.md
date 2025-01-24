@@ -1,0 +1,9 @@
+- Find the "**PHP SERVICE ROLE**" and set values for the variables in the **common_settings**--->**vars**--->**main.yml** file.
+- Run the **play_apps.yml** Ansible playbook file using the command:
+  - **ansible-playbook play_apps.yml --tags=select_tags_separated_by_comma**
+  - To install PHP, use the **install,configure** tags.
+  - To update the config file of php, use the **conf_php** tag.
+  - To update the config file of nginx, use the **conf_nginx** tag.
+  - To update config files, use the **configure** tag.
+  - To delete PHP, use the **remove** tag.
+- When PHP is proposed during the installation, type "yes".

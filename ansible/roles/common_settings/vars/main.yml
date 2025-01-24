@@ -1,0 +1,800 @@
+---
+# vars for all roles and tasks
+#--------------------------------------------------------#
+########## PROJECT VARIABLES ##########
+PROJECT_NAME: "" # Set the project name
+PROJECT_PATH: "/var/www/{{ PROJECT_NAME }}"
+DEPLOY_USER: "deployer" #set the deploy user
+#--------------------------------------------------------#
+########## PRE TASKS ##########
+HOSTNAME: "" # Set server hostname
+INSTALL_TOOLS: # Declare needed tools and utilities
+  - "mc"
+  - "net-tools"
+#--------------------------------------------------------#
+########## NGINX SERVICE ROLE ##########
+SERVER_NAME: "_"
+WITH_CERTIFICATE: "no" # if you need certificate please set yes
+CERTIFICATE_MODE: "nginx" # you can set nginx or cloudflare
+REAL_IP_FROM: "cloudflare" # you can set cloudflare or alb
+REALIP_LOGGING: "no" # yes or no
+CLIENT_MAX_BODY: "no" # Set yes or no
+CLIENT_MAX_BODY_SIZE: "100m" # set client max body size
+WORKER_CONNECTIONS: "768"
+KEEPALIVE_REQUESTS: "1000"
+WORKER_RLIMIT_NOFILE: "150000" # Changes the limit on the largest size of a core file (RLIMIT_CORE) for worker processes.
+                               # Used to increase the limit without restarting the main process.
+NGINX_METRIC_PORT: "8085"
+#--------------------------------------------------------#
+########## MARIADB SERVICE ROLE ##########
+MYSQL_ROOT_PASSWORD: "" # Set root password
+MYSQL_DB_NAME: "" # set the mariadb db name
+MYSQL_DUMPS_TARGET_PATH: "/opt/backup/mysqldump" # set the mariadb backup path
+MYSQL_DATA_PATH: "/var/lib/mysql"
+MYSQL_CONF_PATH: "/etc/mysql"
+
+#--------------------------------------------------------#
+########## PHP SERVICE ROLE ##########
+PHP_VERSION: "" # Set php version Ex. 8.1
+COMPOSER_VERSION: "" # Set the composer version. Ex. 2.5.8
+PM: "dynamic" # The vars is (static, dynamic, ondemand)
+MAX_CHILDREN: "5" # Max_children refers to the maximum number of concurrent PHP-FPM processes allowed to exist in such a pool
+START_SERVERS: "2" # The number of child processes to start when PHP-FPM starts
+MIN_SPARE_SERVERS: "1" # The minimum number of idle child processes PHP-FPM will create. More are created if fewer than this number are available.
+MAX_SPARE_SERVERS: "3" # The maximum number of idle child processes PHP-FPM will create. If there are more child processes available than this value, then some will be killed off.
+MAX_REQUESTS: "500" #The number of requests each child process should execute before respawning. This can be useful to work around memory leaks in 3rd party libraries.
+MEMORY_LIMIT: "-1" # Set the memory limit variable
+PHP_DEPENDENCIES:
+  - "ca-certificates"
+  - "apt-transport-https"
+  - "software-properties-common"
+
+PHP_MODULES: # You can add more php modules
+  - "php{{ PHP_VERSION }}-bcmath"
+  - "php{{ PHP_VERSION }}-curl"
+  - "php{{ PHP_VERSION }}-dom"
+  - "php{{ PHP_VERSION }}-gd"
+  - "php{{ PHP_VERSION }}-mbstring"
+  - "php{{ PHP_VERSION }}-mysqli"
+  - "php{{ PHP_VERSION }}-redis"
+  - "php{{ PHP_VERSION }}-soap"
+  - "php{{ PHP_VERSION }}-ssh2"
+
+PHP_LOG_PATH: "/var/log/php-fpm"
+COMPOSER_BIN_FILE: "/usr/local/bin/composer"
+#--------------------------------------------------------#
+########## SUPERVISOR SERVICE ROLE ##########
+APPLICATION_DEPLOYED: "no" # If before run supervisor role application was deployed, set yes.
+SUPERVISOR_CONFIG_MONITORING: "no" # Set 'yes' if supervisor's monitoring is nedeed
+SUPERVISOR_USER: "" # Ex. root
+SUPERVISOR_LOG_PATH: "/var/log/supervisor"
+SUPERVISOR_CONFIG_PATH: "/etc/supervisor"
+LOGFILE_PATH: "" # Ex. /var/www/{{ PROJECT_NAME }}/storage/logs/worker/{{ item.NAME }}
+WORKERS: # Presented here for a single worker. You can add many workers by saving current syntax
+  - NAME: "" # Set the worker name
+    COMMAND: "" # Set the worker command
+    NUMPROCS: "1" # Supervisor will start as many instances of this program as named by numprocs.
+    CONFIGURATIONS: # You can add other configurations too
+      - "autostart=true"
+      - "autorestart=true"
+      - "redirect_stderr=true"
+#--------------------------------------------------------#
+########## REDIS SERVICE ROLE ##########
+REDIS_PORT: "6379"
+REDIS_BIND_INTERFACE: "127.0.0.1"
+REDIS_TIMEOUT: "0"
+REDIS_DATABASES: "16"
+REDIS_CONF_FILE: "/etc/redis/redis.conf"
+REDIS_LOG_PATH: "/var/log/redis"
+REDIS_DATA_PATH: "/var/lib/redis"
+REDIS_SERVICE_FILE: "/lib/systemd/system/redis-server.service"
+REDIS_DUMPS_TARGET_PATH: "/opt/backup/redisdump"
+REDIS_PASSWORD: "" # Set redis password
+REDIS_VERSION: "" # Set Redis version. Ex. 6.2.6
+REDIS_BUILD_DEPENDENCIES:
+  - "make"
+  - "build-essential"
+  - "pkg-config"
+  - "tcl"
+  - "libssl-dev"
+  - "libsystemd-dev"
+REDIS_BUILD_PARAMS:
+  BUILD_WITH_SYSTEMD: "yes"
+  USE_SYSTEMD: "yes"
+  BUILD_TLS: "yes" # Set yes for supporting tls 
+  PREFIX: "/usr" 
+#--------------------------------------------------------#
+########## NODE SERVICE ROLE ##########
+NVM_VERSION: "" # Set the nvm version. Ex. 0.39.3
+NVM_NODE_VERSION: "" # Set the node version. Ex. 12.22.12
+NVM_DIR: "/var/lib/nvm"
+PM2_BIN_FILE: "/usr/bin/pm2"
+NPM_SYM_LINK: "/usr/bin/npm"
+NODE_SYM_LINK: "/usr/bin/node"
+LARAVEL_ECHO_SERVER: "no" # Set yes for install laravel-echo-server
+#--------------------------------------------------------#
+########## MONGODB SERVICE ROLE ##########
+MONGODB_VERSION: "" # Set mongodb version. Ex. 7.0
+MONGODB_ROOT_USER: "root" # Set the root user
+MONGODB_ROOT_PASSWORD: "" # Set the root password
+MONGODB_DATABASE_NAME: "" # Set the db name
+MONGODB_DATABASE_USER: "" # Set the user for db
+MONGODB_DATABASE_USER_PASSWORD: "" # Set the user password
+MONGODB_LOG_PATH: "/var/log/mongodb"
+MONGODB_DATA_PATH: "/var/lib/mongodb"
+MONGODB_CONF_FILE: "/etc/mongod.conf"
+MONGODB_DUMPS_TARGET_PATH: "/opt/backup/mongodump" # Set the MongoDB path where dumps will be stored
+MONGODB_ADMIN_DB_NAME: "admin" # Set the Mongo db name. Ex. admin
+MONGODB_LOCALHOST: "127.0.0.1"
+MONGODB_PORT: "27017"
+#--------------------------------------------------------#
+########## FILEBEAT SERVICE ROLE ##########
+FILEBEAT_DEPENDENCIES:
+  - "apt-transport-https"
+  - "gnupg2"
+FILEBEAT_VERSION_FAMILY: "" # Set the filebeat family version. Ex. 8.x
+FILEBEAT_VERSION: "" # Set the filebeat version. Ex. 8.8.0
+LOGSTASH_HOST: "" # Set your logstash host. Ex. ["x.x.x.x:5044"]
+FILEBEAT_DATA_PATH: "/var/lib/filebeat"
+FILEBEAT_LOG_PATH: "/var/log/filebeat"
+FILEBEAT_INPUT_APPS: # Uncomment apps, witch you want for logging
+  #- "nginx"
+  #- "php"
+  #- "redis"
+  #- "supervisor"
+  #- "pm2"
+#--------------------------------------------------------#
+########## METRICBEAT SERVICE ROLE ##########
+METRICBEAT_VERSION_FAMILY: "" # Set the metricbeat version family. Ex. 8.x
+METRICBEAT_VERSION: "" # Set metricbeat version. Ex. 8.8.0
+KIBANA_HOST: "" # Set your kibana host. Ex. http://x.x.x.x:5601
+ELASTICSEARCH_HOST: "" # Set your elasticsearch host.  Ex. ["https://X.X.X.X:9200"]
+ELASTICSEARCH_USERNAME: "" # Set the Elasticsearch username
+METRICBEAT_LOG_PATH: "/var/log/metricbeat"
+METRICBEAT_DATA_PATH: "/var/lib/metricbeat"
+METRICBEAT_CONF_PATH: "/etc/metricbeat"
+FINGERPRINT: "" # Set the Elasticsearch fingerprint
+METRICBEAT_MODULES: # Uncomment apps, witch service you want use
+  - "nginx"
+  #- "redis"
+  #- "php_fpm"
+  #- "mongodb"
+  #- "system"
+#--------------------------------------------------------#
+########## ELK STACK ROLE ##########
+ELK_REQUIREMENTS:
+  - "apt-transport-https"
+  - "gpg-agent"
+  - "curl"
+  - "procps"
+  - "net-tools"
+  - "gnupg"
+  - "zip"
+  - "unzip"
+#------Elasticsearch Configuration ------#
+ELK_VERSION_FAMILY: "" # Set the ELK family version. Ex. 8.x
+ELK_VERSION: "" # Set the ELK version. Ex. 8.8.0
+ELASTICSEARCH_MASTER_INIT_NODE_IP: "" # Set the ELK master init node IP
+ELASTICSEARCH_PASSWORD: "" # Set the password of Elasticsearch
+ELASTICSEARCH_CONFIG_DIR: "/etc/elasticsearch"
+ELASTICSEARCH_CLUSTER_NAME: "" # Set the cluster name of Elasticsearch
+ELASTICSEARCH_SSL_CERTIFICATE_PATH: "/etc/elasticsearch/certs"
+ELASTICSEARCH_CA_NAME: "elastic-stack-ca.p12"
+ELASTICSEARCH_CA_PASSWORD: "" # Set the CA password of Elasticsearch
+ELASTICSEARCH_CERT_NAME: "transport.p12"
+ELASTICSEARCH_CERT_PASSWORD: "" # Set the cert password of Elasticsearch
+ELASTICSEARCH_HTTP_GENERATE_OUTPUT_FILENAME: "elasticsearch-ssl-http.zip"
+ELASTICSEARCH_NETWORK_HOST: "0.0.0.0" # you can set {{ ansible_default_ipv4.address }}
+ELASTICSEARCH_PATH_DATA: "/var/lib/elasticsearch"
+ELASTICSEARCH_PATH_LOGS: "/var/log/elasticsearch"
+ELASTICSEARCH_HTTP_PORT: "9200"
+ELASTICSEARCH_DISCOVERY_SEED_HOSTS: [ "{{ ELASTICSEARCH_MASTER_INIT_NODE_IP }}" ] # Enter your Elasticsearch master server's IP address or hostname.
+#------Kibana Configuration ------#
+KIBANA_CONFIG_DIR: "/etc/kibana"
+KIBANA_SSL_CERTIFICATE_PATH: "/etc/kibana/certs"
+KIBANA_SERVER_PORT: "5601"
+KIBANA_SERVER_HOST: "0.0.0.0"
+KIBANA_SERVER_NAME: "kibana"
+KIBANA_SSL_CERTIFICATE_NAME: "elastic_ca.crt"
+ELASTIC_SEARCH_MASTER_NODES: '["https://{{ ELASTICSEARCH_MASTER_INIT_NODE_IP }}:{{ ELASTICSEARCH_HTTP_PORT }}"]'
+#------Logstash Configuration ------#
+LOGSTASH_REQUIREMENTS:
+  - "apt-transport-https"
+LOGSTASH_VERSION: "" # Set the Logstash version. Ex. 1:8.8.14.2-1
+LOGSTASH_CONFIG_DIR: "/etc/logstash/"
+LOGSTASH_SSL_CERTIFICATE_PATH: "/etc/logstash/certs"
+LOGSTASH_SSL_CERTIFICATE_NAME: "ca.crt"
+BEATS_PORT: "5144"
+#--------------------------------------------------------#
+########## DANTE SERVICE ROLE ##########
+DANTE_USER: "" # Set the user
+DANTE_USER_PASSWORD: "" # Set user password
+DANTE_CONF_FILE: "/etc/danted.conf"
+DANTE_LOG_PATH: "/var/log/dante"
+DANTE_SERVICE_FILE: "/lib/systemd/system/danted.service"
+LOG_OUTPUT: "/var/log/dante/socks.log"
+INTERNAL_NAME: "{{ ansible_default_ipv4.interface }}"
+INTERNAL_PORT: "" # Set the port Ex 50148
+EXTERNAL: "{{ ansible_default_ipv4.interface }}"
+CLIENT_METHOD: "username"
+#--------------------------------------------------------#
+########## PRIVOXY SERVICE ROLE ##########
+PRIVOXY_VERSION: "" # Set the privoxy version Ex. 3.0.34
+PRIVOXY_CONF_PATH: "/usr/local/etc/privoxy"
+PRIVOXY_CONF_FILE: "/usr/local/etc/privoxy/config"
+PRIVOXY_LOG_PATH: "/var/log/privoxy"
+PRIVOXY_BIN_FILE: "/usr/local/sbin/privoxy"
+PRIVOXY_INITD_SERVICE: "/etc/init.d/privoxy"
+PRIVOXY_NEEDED_APPS:
+  - "libpcre3-dev"
+  - "cmake"
+  - "make"
+  - "gcc"
+  - "autoconf"
+PRIVOXY_LISTEN_ADDRESS: "127.0.0.1:8118" # You can set default value: 127.0.0.1:8118
+PROXY_IP: ""
+FORWARD_SOCKS5: "" # Set privoxy configuration socks5. Ex. forward-socks5 / PROXY_USERNAME:PROXY_PASSWORD@{{ PROXY_IP }}:PROXY_PORT .
+
+#--------------------------------------------------------#
+# MONITORING
+############ ALERTMANAGER #############
+ALERTMANAGER_VERSION: "" # Set the alertmanager version Ex. 0.27.0
+ALERTMANAGER_SYSTEM_USER: "alertmanager"
+ALERTMANAGER_SYSTEM_GROUP: "alertmanager"
+ALERTMANAGER_BINARY_INSTALL_DIR: "/usr/local/bin"
+ALERTMANAGER_CONFIG_DIR: "/etc/alertmanager"
+ALERTMANAGER_DB_DIR: "/var/lib/alertmanager"
+ALERTMANAGER_SERVICE_FILE_PATH: "/etc/systemd/system/"
+ALERTMANAGER_LISTEN_PORT: "9093"
+ALERTMANAGER_WEB_LISTEN_ADDRESS: "0.0.0.0:{{ ALERTMANAGER_LISTEN_PORT }}"
+ALERTMANAGER_WEB_EXTERNAL_URL: "http://localhost:{{ ALERTMANAGER_LISTEN_PORT }}"
+ALERTMANAGER_RESOLVE_TIMEOUT: "3m"
+
+########## INSTALL PROMETHEUS ##########
+PROMETHEUS_VERSION: "" # Set the prometheus version Ex. 2.50.1
+PROMETHEUS_CONFIG_DIR: "/etc/prometheus"
+PROMETHEUS_DB_DIR: "/var/lib/prometheus"
+PROMETHEUS_BINARY_INSTALL_DIR: "/usr/local/bin"
+PROMETHEUS_SERVICE_FILE_PATH: "/etc/systemd/system"
+PROMETHEUS_STORAGE_RETENTION: "15d"
+PROMETHEUS_STOP_TIMEOUT: "600s"
+PROMETHEUS_GLOBAL:
+  scrape_interval: "15s"
+  scrape_timeout: "10s"
+  evaluation_interval: "15s"
+
+PROMETHEUS_SCOPE_CONFIG: # You can add more jobs
+  - job_name: "prometheus"
+    static_configs:
+      - targets:
+          - "{{ ansible_fqdn | default(ansible_host) | default('localhost') }}:9090"
+  - job_name: "node-exporter"
+    scrape_interval: "1s"
+    scrape_timeout: "1s"
+    file_sd_configs:
+      - files:
+          - "{{ PROMETHEUS_CONFIG_DIR }}/file_sd/node-exporter.yml"
+  - job_name: "nginx-exporter"
+    scrape_interval: "1s"
+    scrape_timeout: "1s"
+    file_sd_configs:
+      - files:
+          - "{{ PROMETHEUS_CONFIG_DIR }}/file_sd/nginx-exporter.yml"
+  - job_name: "nginxlog-exporter"
+    scrape_interval: "1s"
+    scrape_timeout: "1s"
+    file_sd_configs:
+      - files:
+          - "{{ PROMETHEUS_CONFIG_DIR }}/file_sd/nginxlog-exporter.yml"
+  - job_name: "phpfpm-exporter"
+    scrape_interval: "1s"
+    scrape_timeout: "1s"
+    file_sd_configs:
+      - files:
+         - "{{ PROMETHEUS_CONFIG_DIR }}/file_sd/phpfpm-exporter.yml"
+  - job_name: "elasticsearch-exporter"
+    scrape_interval: "1s"
+    scrape_timeout: "1s"
+    file_sd_configs:
+      - files:
+          - "{{ PROMETHEUS_CONFIG_DIR }}/file_sd/elasticsearch-exporter.yml"
+
+PROMETHEUS_TARGETS: #{} # After install node exporter on hosts you must update targets and host file( on file directory) and deploy the changes
+  elasticsearch-exporter:
+    - targets:
+        - "EsNode0:{{ ELASTICSEARCH_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "es-node1"
+    - targets:
+        - "EsNode1:{{ ELASTICSEARCH_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "es-node2"
+  node-exporter:
+    - targets:
+        - "Prometheus:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Prometheus"
+    - targets:  
+        - "CrawlerPlanet:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "CrawlerPlanet"
+        group: "CrawlerServers"
+    - targets:
+        - "CrawlerSubway:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "CrawlerSubway"
+        group: "CrawlerServers"
+    - targets:
+        - "CrawlerReceiver:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "CrawlerReceiver"
+        group: "CrawlerServers"
+    - targets:
+        - "CrawlerLiveOdds:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "CrawlerLiveOdds"
+        group: "CrawlerServers"
+    - targets:
+        - "CrawlerLiveMarkets:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "CrawlerLiveMarkets"
+        group: "CrawlerServers"
+    - targets:
+        - "CrawlerLiveMatchesAndStats:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "CrawlerLiveMatchesAndStats"
+        group: "CrawlerServers"
+    - targets:
+        - "CrawlerSocket:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "CrawlerSocket"
+        group: "CrawlerServers"
+    - targets:
+        - "CrawlerPreLiveMarkets:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "CrawlerPreLiveMarkets"
+        group: "CrawlerServers"
+    - targets:
+        - "CrawlerPreLiveOdds:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "CrawlerPreLiveOdds"
+        group: "CrawlerServers"
+    - targets:
+        - "CrawlerPreLiveMatches:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "CrawlerPreLiveMatches"
+        group: "CrawlerServers"
+    - targets:
+        - "CrawlerPreLiveReceiver:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "CrawlerPreLiveReceiver"
+        group: "CrawlerServers"
+    - targets:
+        - "CrawlerPreLiveCompetitionsAndBookmakers:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "CrawlerPreLiveCompetitionsAndBookmakers"
+        group: "CrawlerServers"
+    - targets: 
+        - "SpiderStatic:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "SpiderStatic"
+        group: "SpiderServers"
+    - targets:
+        - "SpiderReceiver:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "SpiderReceiver"
+        group: "SpiderServers"
+    - targets:
+        - "SpiderLiveMatchesAndStats:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "SpiderLiveMatchesAndStats"
+        group: "SpiderServers"
+    - targets:
+        - "SpiderLiveMarkets:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "SpiderLiveMarkets"
+        group: "SpiderServers"
+    - targets:
+        - "SpiderLiveOdds:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "SpiderLiveOdds"
+        group: "SpiderServers"
+    - targets:
+        - "SpiderPreLiveReceiver:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "SpiderPreLiveReceiver"
+        group: "SpiderServers"
+    - targets:
+        - "SpiderPreLiveMarkets:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "SpiderPreLiveMarkets"
+        group: "SpiderServers"
+    - targets:
+        - "SpiderPreLiveOdds:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "SpiderPreLiveOdds"
+        group: "SpiderServers"
+    - targets:
+        - "SpiderPreLiveMatches:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "SpiderPreLiveMatches"
+        group: "SpiderServers"
+    - targets:
+        - "SpiderSubway:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "SpiderSubway"
+        group: "SpiderServers"
+    - targets: 
+        - "Patio:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Patio"
+        group: "FrontendServers"
+    - targets:
+        - "FastApp:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "FastApp"
+        group: "FrontendServers"
+    - targets: 
+        - "Gamester:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Gamester"
+        group: "BackendServers"
+    - targets:
+        - "Gator:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Gator"
+        group: "BackendServers"
+    - targets:
+        - "Basket:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Basket"
+        group: "BackendServers"
+    - targets:
+        - "Stadium:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Stadium"
+        group: "BackendServers"
+    - targets:
+        - "GreenPlanet:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "GreenPlanet"
+        group: "BackendServers"
+    - targets:
+        - "GamesterHub:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "GamesterHub"
+        group: "BackendServers"
+    - targets:
+        - "ShopApp:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "ShopApp"
+        group: "BackendServers"
+    - targets: 
+        - "MoneyGem:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "MoneyGem" 
+        group: "PaymentServers"
+    - targets:
+        - "MoneyGemHelper:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "MoneyGemHelper" 
+        group: "PaymentServers"
+    - targets:
+        - "ShaahinServices:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "ShaahinServices" 
+        group: "PaymentServers"
+    - targets: 
+        - "EsNode0:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "EsNode0"
+        group: "ElasticSearchServers"
+    - targets:
+        - "EsNode1:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "EsNode1"
+        group: "ElasticSearchServers"
+    - targets:
+        - "Kibana:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Kibana"
+        group: "ElasticSearchServers"
+    - targets:
+        - "Runner1:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Runner1"
+        group: "Runners"
+    - targets:
+        - "Runner2:{{ NODE_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Runner2"
+        group: "Runners"
+  nginx-exporter:
+    - targets:
+        - "FastApp:{{ NGINX_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "FastApp"
+        group: "FrontendServers"
+    - targets:
+        - "Patio:{{ NGINX_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Patio"
+        group: "FrontendServers"
+    - targets:
+        - "ShopApp:{{ NGINX_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "ShopApp"
+        group: "BackendServers"
+    - targets:
+        - "Gamester:{{ NGINX_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Gamester"
+        group: "BackendServers"
+    - targets:
+        - "Gator:{{ NGINX_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Gator"
+        group: "BackendServers"
+    - targets:
+        - "Basket:{{ NGINX_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Basket"
+        group: "BackendServers"
+    - targets:
+        - "Stadium:{{ NGINX_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Stadium"
+        group: "BackendServers"
+    - targets:
+        - "GreenPlanet:{{ NGINX_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "GreenPlanet"
+        group: "BackendServers"
+    - targets:
+        - "GamesterHub:{{ NGINX_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "GamesterHub"
+        group: "BackendServers"
+    - targets:
+        - "MoneyGem:{{ NGINX_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "MoneyGem"
+        group: "PaymentServers"
+    - targets:
+        - "MoneyGemHelper:{{ NGINX_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "MoneyGemHelper"
+        group: "PaymentServers"
+    - targets:
+        - "ShaahinServices:{{ NGINX_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "ShaahinServices"
+        group: "PaymentServers"
+  nginxlog-exporter:
+    - targets:
+        - "FastApp:{{ NGINXLOG_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "FastApp"
+        group: "FrontendServers"
+    - targets:
+        - "Patio:{{ NGINXLOG_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Patio"
+        group: "FrontendServers"
+    - targets:
+        - "ShopApp:{{ NGINXLOG_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "ShopApp"
+        group: "BackendServers"
+    - targets:
+        - "Gamester:{{ NGINXLOG_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Gamester"
+        group: "BackendServers"
+    - targets:
+        - "Gator:{{ NGINXLOG_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Gator"
+        group: "BackendServers"
+    - targets:
+        - "Basket:{{ NGINXLOG_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Basket"
+        group: "BackendServers"
+    - targets:
+        - "Stadium:{{ NGINXLOG_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Stadium"
+        group: "BackendServers"
+    - targets:
+        - "GreenPlanet:{{ NGINXLOG_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "GreenPlanet"
+        group: "BackendServers"
+    - targets:
+        - "GamesterHub:{{ NGINXLOG_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "GamesterHub"
+        group: "BackendServers"
+    - targets:
+        - "MoneyGem:{{ NGINXLOG_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "MoneyGem"
+        group: "PaymentServers"
+    - targets:
+        - "MoneyGemHelper:{{ NGINXLOG_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "MoneyGemHelper"
+        group: "PaymentServers"
+    - targets:
+        - "ShaahinServices:{{ NGINXLOG_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "ShaahinServices"
+        group: "PaymentServers"
+  phpfpm-exporter:
+    - targets:
+        - "ShopApp:{{ PHPFPM_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "ShopApp"
+        group: "BackendServers"
+    - targets:
+        - "Gamester:{{ PHPFPM_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Gamester"
+        group: "BackendServers"
+    - targets:
+        - "Gator:{{ PHPFPM_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Gator"
+        group: "BackendServers"
+    - targets:
+        - "Basket:{{ PHPFPM_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Basket"
+        group: "BackendServers"
+    - targets:
+        - "Stadium:{{ PHPFPM_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "Stadium"
+        group: "BackendServers"
+    - targets:
+        - "GreenPlanet:{{ PHPFPM_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "GreenPlanet"
+        group: "BackendServers"
+    - targets:
+        - "GamesterHub:{{ PHPFPM_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "GamesterHub"
+        group: "BackendServers"
+    - targets:
+        - "MoneyGem:{{ PHPFPM_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "MoneyGem"
+        group: "PaymentServers"
+    - targets:
+        - "MoneyGemHelper:{{ PHPFPM_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "MoneyGemHelper"
+        group: "PaymentServers"
+    - targets:
+        - "ShaahinServices:{{ PHPFPM_EXPORTER_LISTEN_PORT }}"
+      labels:
+        instance: "ShaahinServices"
+        group: "PaymentServers"
+
+########## INSTALL NODE-EXPORTER ##########
+NODE_EXPORTER_VERSION: "" # set the node exporter version Ex. 1.7.0
+NODE_EXPORTER_SYSTEM_GROUP: "node-exp" # set the node exporter group name
+NODE_EXPORTER_SYSTEM_USER: "{{ NODE_EXPORTER_SYSTEM_GROUP }}" # same as group
+NODE_EXPORTER_CONFIG_DIR: "/etc/node_exporter"
+NODE_EXPORTER_BINARY_INSTALL_DIR: "/usr/local/bin"
+NODE_EXPORTER_LISTEN_PORT: "9100" # Node exporter port
+NODE_EXPORTER_WEB_LISTEN_ADDRESS:
+  - "0.0.0.0:{{ NODE_EXPORTER_LISTEN_PORT }}"
+NODE_EXPORTER_WEB_TELEMETRY_PATH: "/metrics"
+NODE_EXPORTER_TEXTFILE_DIR: "/var/lib/node_exporter"
+NODE_EXPORTER_SERVICE_FILE_PATH: "/etc/systemd/system"
+node_exporter_enabled_collectors:
+  - systemd
+  - systemd.unit-whitelist="(php8.1-fpm|ssh|filebeat|nginx).service" # you can add services tah you need (php8.1-fpm|supervisor|ssh|filebeat|nginx|redis-server|mongod|privoxy|mariadb)
+  - systemd.enable-start-time-metrics
+  #- supervisord
+  #- supervisord.url="http://localhost:9001/RPC2"
+
+########## INSTALL NGINX-EXPORTER ##########
+NGINX_EXPORTER_VERSION: "" # set the nginx exporter version Ex. 1.1.0
+NGINX_EXPORTER_INSTALL_DIR: "/usr/local/bin"
+NGINX_EXPORTER_SERVICE_FILE_PATH: "/etc/systemd/system"
+NGINX_EXPORTER_LISTEN_PORT: "9113"
+NGINXLOG_EXPORTER_USER: "nginxlog_exporter"
+NGINXLOG_EXPORTER_GROUP: "nginxlog_exporter"
+NGINXLOG_EXPORTER_VERSION: "1.11.0" # set the nginxlog exporter version Ex. 1.11.0
+NGINXLOG_EXPORTER_BINARY_INSTALL_DIR: "/usr/local/bin"
+NGINXLOG_EXPORTER_CONFIG_FILE: "/etc/nginxlog_exporter/nginxlog_exporter.yml"
+NGINXLOG_EXPORTER_CONFIG_PATH: "/etc/nginxlog_exporter"
+NGINXLOG_EXPORTER_SERVICE_FILE_PATH: "/etc/systemd/system"
+NGINXLOG_EXPORTER_LISTEN_PORT: "4040"
+
+########## INSTALL PHPFPM-EXPORTER ##########
+PHPFPM_EXPORTER_VERSION: "" # set the nginx exporter version Ex. 0.6.0
+PHPFPM_EXPORTER_BINARY_INSTALL_DIR: "/usr/local/bin"
+PHPFPM_EXPORTER_SERVICE_FILE_PATH: "/etc/systemd/system"
+PHPFPM_EXPORTER_LISTEN_PORT: "9253"
+
+########## INSTALL ELASTICSEARCH-EXPORTER ##########
+ELASTICSEARCH_EXPORTER_VERSION: "" # set the elasticsearch exporter version Ex. 1.7.0
+ELASTICSEARCH_EXPORTER_CONFIG_PATH: "/etc/elasticsearch_exporter"
+ELASTICSEARCH_EXPORTER_BINARY_INSTALL_DIR: "/usr/local/bin"
+ELASTICSEARCH_EXPORTER_SERVICE_FILE_PATH: "/etc/systemd/system"
+ELASTICSEARCH_EXPORTER_LISTEN_PORT: "9114"
+
+########## INSTALL GRAFANA ##########
+GRAFANA_DEPENDENCIES:
+  - "apt-transport-https"
+  - "adduser"
+  - "ca-certificates"
+  - "libfontconfig"
+  - "gnupg2"
+
+GRAFANA_VERSION: "" # Set the grafana version Ex. 10.4.1
+GRAFANA_USER: "grafana"
+GRAFANA_GROUP: "grafana"
+GRAFANA_ADMIN_USER: "grafana" # Set the login user
+GRAFANA_ADMIN_PASSWORD: "" # Set the login user password
+GRAFANA_INSTALL_DIR: "/usr/share/grafana"
+GRAFANA_CONFIG_DIR: "/etc/grafana"
+GRAFANA_CONF_FILE: "{{ GRAFANA_CONFIG_DIR }}/grafana.ini"
+GRAFANA_LOG_DIR: "/var/log/grafana"
+GRAFANA_DATA_DIR: "/var/lib/grafana"
+GRAFANA_PROVISIONING_CFG_DIR: "{{ GRAFANA_CONFIG_DIR }}/provisioning"
+GRAFANA_PLUGINS_DIR: "{{ GRAFANA_DATA_DIR }}/plugins"
+GRAFANA_PID_FILE: "/run/grafana/grafana-server.pid"
+GRAFANA_SERVICE_FILE: "/lib/systemd/system/grafana-server.service"
+GRAFANA_DASHBOARD_MIN_REFRESH_INTERVAL: "" # Minimum dashboard refresh interval. Followed by a unit suffix (ms, s, m, h, d), e.g. 30s or 1m.
+GRAFANA_HTTP_PORT: "3000" # Set the grafana listening port
+GRAFANA_HTTP_ADDR: "localhost" #The ip address to bind to, empty will bind to all interfaces
+GRAFANA_LOG_MODE: "console file"
+GRAFANA_LOG_LEVEL: "debug"
+GRAFANA_LOG_CONSOLE_FORMAT: "json"
+GRAFANA_LOG_FILE_FORMAT: "json"
+
+GRAFANA_DATASOURCES: # You can add more datasources
+  - name: "Prometheus"
+    type: "prometheus"
+    access: "proxy"
+    url: "" # Set the datasource url: Ex. http://prometheus_local_ip:prometheus_local_port
+    isDefault: true
+    jsonData:
+      tlsAuth: false
+      tlsAuthWithCACert: false
+      tlsSkipVerify: true
+
+GRAFANA_DASHBOARDS: # You can add more dashboards
+  - dashboard_id: '1860' # node_exporter
+    revision_id: '33'
+    datasource: 'Prometheus'
+
+########## DOCKER SERVICE ROLE ##########
+#--------------------------------------------------------#
+DOCKER_PACKAGES:
+  - "ca-certificates"
+  - "gnupg"
+
+DOCKER_ENGINE:
+  - "docker-ce"
+  - "docker-ce-cli"
+  - "containerd.io"
+  - "docker-buildx-plugin"
+  - "docker-compose-plugin"
+  - "docker-ce-rootless-extras"
+
+DOCKER_CONTAINERD_VERSION: "1.6.28-1"
+DOCKER_CE_VERSION: "25.0.4-1"
+DOCKER_CE_CLI_VERSION: "25.0.4-1"
+DOCKER_COMPOSE_PLUGIN_VERSION: "2.24.7-1"
+DOCKER_BUILDX_PLUGIN_VERSION: "0.13.0-1"
+DOCKER_DATA_PATH: "/var/lib/docker"
+CONTAINERD_DATA_PATH: "/var/lib/containerd"
+DOCKER_USERS: 
+  - "" # Set the usernames that should be in the docker group

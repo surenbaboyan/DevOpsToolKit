@@ -1,0 +1,8 @@
+- Find the "**METRICBEAT SERVICE ROLE**" and set values for the variables in the **common_settings**--->**vars**-->**main.yml** file.
+- Run the **play_apps.yml** Ansible playbook file using the command: 
+  - **ansible-playbook play_apps.yml --tags=select_tags_separated_by_comma**
+  - To install Metricbeat, use the **install,configure** tags.
+  - To update the config file, use the **conf_file** tag. 
+  - To add new modules, use the **conf_modules** tag.
+  - To delete Metricbeat, use the **remove** tag.
+- When Metricbeat is proposed during the installation, type "yes".

@@ -1,0 +1,7 @@
+- Find the "**MONGODB SERVICE ROLE**" and set values for the variables in the **common_settings**--->**vars**--->**main.yml** file.
+- Run the **play_apps.yml** Ansible playbook file using the command:
+  - **ansible-playbook play_apps.yml --tags=select_tags_separated_by_comma**
+  - To install MongoDB, use the **install,configure** tags. 
+  - To create a new database, use the **database** tag.
+  - To delete MongoDB, use the **remove** tag.
+- When MongoDB is proposed during the installation, type "yes".

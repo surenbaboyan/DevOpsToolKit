@@ -1,0 +1,18 @@
+---
+# tasks file for logstash
+- block:
+    - name: "Install logstash"
+      ansible.builtin.include_tasks: "install.yml"
+  tags: "install"
+
+- block:
+    - name: "Configure logstash service"
+      ansible.builtin.include_tasks: "configure.yml"
+      tags:
+        - "logstash_pipeline_config"
+  tags: "configure"
+
+- block:
+    - name: "Remove logstash"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

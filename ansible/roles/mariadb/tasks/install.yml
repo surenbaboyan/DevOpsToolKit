@@ -1,0 +1,37 @@
+---
+- name: "Install mariadb via apt"
+  ansible.builtin.apt:
+    name: "mariadb-server"
+    state: "latest"
+    update_cache: "yes"
+  register: "apt_action"
+  retries: "50"
+  until: "apt_action is success or ('E: Could not get lock /var/lib/dpkg/lock-frontend' not in apt_action.msg and '/var/lib/dpkg/lock-frontend' not in apt_action.msg)"
+
+- name: "Install pymysql via apt"
+  ansible.builtin.apt:
+    name: "python3-pymysql"
+    state: "latest"
+
+- name: "Set up root user"
+  community.mysql.mysql_user:
+    name: "root"
+    password: "{{ MYSQL_ROOT_PASSWORD }}"
+    login_user: "root"
+    login_password: "{{ MYSQL_ROOT_PASSWORD }}"
+    check_implicit_admin: "true"
+    login_unix_socket: "/run/mysqld/mysqld.sock"
+
+- name: "Remove anonymous user"
+  community.mysql.mysql_user:
+    name: ""
+    state: "absent"
+    login_user: "root"
+    login_password: "{{ MYSQL_ROOT_PASSWORD }}"
+
+- name: "Remove test database"
+  community.mysql.mysql_db:
+    name: "test"
+    state: "absent"
+    login_user: "root"
+    login_password: "{{ MYSQL_ROOT_PASSWORD }}"

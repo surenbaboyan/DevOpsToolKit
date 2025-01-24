@@ -1,0 +1,9 @@
+---
+- name: "Copy the nginxlog_exporter config file"
+  ansible.builtin.template:
+    src: "nginxlog_exporter.yml.j2"
+    dest: "{{ NGINXLOG_EXPORTER_CONFIG_FILE }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: "Reload nginxlog_exporter"

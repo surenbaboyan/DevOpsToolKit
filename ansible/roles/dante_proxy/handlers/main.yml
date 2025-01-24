@@ -1,0 +1,14 @@
+---
+- name: "Restart dante"
+  ansible.builtin.systemd:
+    daemon_reload: "true"
+    name: "danted"
+    state: "restarted"
+    enabled: "true"
+  register: "dante_restarted"
+
+- name: "Reload dante"
+  ansible.builtin.systemd:
+    name: "danted"
+    state: "restarted"
+  when: "dante_restarted is not defined"

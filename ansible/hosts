@@ -1,0 +1,191 @@
+[prod_servers:children]
+prod_servers_bastion
+prod_servers_frontend
+prod_servers_backend
+prod_servers_payment_backend
+prod_servers_crawler
+prod_servers_spider
+prod_servers_monitoring
+prod_servers_runners
+elk
+
+[prod_servers:vars]
+ansible_port = 2237
+ansible_user = ansible
+private_key_file = ~/.ssh
+ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ProxyCommand="ssh -o \'ForwardAgent yes\' ansible@54.145.88.123 -p 2237 \'nc %h %p\'"'
+
+[prod_servers_monitoring]
+(P)Prometheus ansible_host=172.26.59.24
+(P)Grafana ansible_host=172.26.59.22
+
+[prod_servers_bastion]
+(P)Bastion ansible_host=172.26.59.47
+
+[prod_servers_frontend]
+(P)Patio   ansible_host=172.26.59.10
+(P)FastApp ansible_host=172.26.59.58
+
+[prod_servers_backend]
+(P)Gamester    ansible_host=172.26.59.38
+(P)Gator       ansible_host=172.26.59.50
+(P)Basket      ansible_host=172.26.59.19
+(P)Stadium     ansible_host=172.26.59.20
+(P)GreenPlanet ansible_host=172.26.59.26
+(P)GamesterHub ansible_host=172.26.59.12
+(P)ShopApp     ansible_host=172.26.59.28
+
+[prod_servers_payment_backend]
+(P)MoneyGem        ansible_host=172.26.59.100
+(P)MoneyGemHelper  ansible_host=172.26.59.8
+(P)ShaahinServices ansible_host=172.26.59.44
+
+[prod_servers_elk]
+(P)EsNode0 ansible_host=172.26.59.34
+(P)EsNode1 ansible_host=172.26.59.18
+(P)Kibana  ansible_host=172.26.59.30
+
+[prod_servers_runners]
+(P)Runner1 ansible_host=172.26.59.55
+(P)Runner2 ansible_host=172.26.59.27
+
+[prod_servers_crawler]
+(P)CrawlerSubway                           ansible_host=172.26.59.16
+(P)CrawlerPlanet                           ansible_host=172.26.59.60
+(P)CrawlerSocket                           ansible_host=172.26.59.21
+(P)CrawlerReceiver                         ansible_host=172.26.59.9
+(P)CrawlerPreLiveReceiver                  ansible_host=172.26.59.13
+(P)CrawlerPreLiveOdds                      ansible_host=172.26.59.39
+(P)CrawlerPreLiveMatches                   ansible_host=172.26.59.14
+(P)CrawlerPreLiveMarkets                   ansible_host=172.26.59.40
+(P)CrawlerPreLiveCompetitionsAndBookmakers ansible_host=172.26.59.52
+(P)CrawlerLiveOdds                         ansible_host=172.26.59.4
+(P)CrawlerLiveMatchesAndStats              ansible_host=172.26.59.45
+(P)CrawlerLiveMarkets                      ansible_host=172.26.59.37
+
+[prod_servers_spider]
+(P)SpiderSubway                 ansible_host=172.26.59.54
+(P)SpiderStatic                 ansible_host=172.26.59.25
+(P)SpiderReceiver               ansible_host=172.26.59.49
+(P)SpiderPreLiveReceiver        ansible_host=172.26.59.32
+(P)SpiderPreLiveOdds            ansible_host=172.26.59.15
+(P)SpiderPreLiveMatches         ansible_host=172.26.59.35
+(P)SpiderPreLiveMarkets         ansible_host=172.26.59.43
+(P)SpiderLiveOdds               ansible_host=172.26.59.17
+(P)SpiderLiveMatchesAndStats    ansible_host=172.26.59.41
+(P)SpiderLiveMarkets            ansible_host=172.26.59.62
+
+#---------------------------------------------------------------------------------------------------------#
+[dev_servers:children]
+dev_servers_bastion
+dev_servers_backend
+dev_servers_payment_backend
+dev_servers_frontend
+
+[dev_servers:vars]
+ansible_port = 2237
+ansible_user = ansible
+private_key_file = ~/.ssh
+ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ProxyCommand="ssh -o \'ForwardAgent yes\' ansible@3.219.154.92 -p 2237 \'nc %h %p\'"'
+
+[dev_servers_bastion]
+(D)Bastion ansible_host=172.26.60.107
+
+[dev_servers_frontend]
+(D)Patio       ansible_host=172.26.60.82
+(D)FastApp     ansible_host=172.26.60.109
+(D)MafiaFront  ansible_host=172.26.60.126
+
+[dev_servers_backend]
+(D)Gamester    ansible_host=172.26.60.84
+(D)Gator       ansible_host=172.26.60.85
+(D)Basket      ansible_host=172.26.60.13
+(D)Stadium     ansible_host=172.26.60.41
+(D)GreenPlanet ansible_host=172.26.60.31
+(D)GamesterHub ansible_host=172.26.60.40
+(D)ShopApp     ansible_host=172.26.60.117
+(D)Mafia       ansible_host=172.26.60.124
+
+[dev_servers_payment_backend]
+(D)MoneyGem        ansible_host=172.26.60.48
+(D)MoneyGemHelper  ansible_host=172.26.60.79
+(D)ShaahinServices ansible_host=172.26.60.14
+
+#---------------------------------------------------------------------------------------------------------#
+[proxy_servers:children]
+proxy_servers_bamdad
+proxy_servers_shahriar
+proxy_servers_simin
+
+[proxy_servers_bamdad]
+bamdad-dante1    ansible_host=188.121.100.172
+bamdad-dante2	 ansible_host=5.34.203.104
+bamdad-dante3	 ansible_host=37.32.8.156
+bamdad-dante4	 ansible_host=188.121.118.82
+bamdad-dante5	 ansible_host=188.121.117.160
+bamdad-dante6	 ansible_host=188.121.116.222
+bamdad-dante7	 ansible_host=188.121.119.186
+bamdad-dante8	 ansible_host=37.32.15.82
+bamdad-dante19	 ansible_host=5.34.203.35
+bamdad-dante20	 ansible_host=5.34.201.44
+bamdad-dante21	 ansible_host=5.34.205.49
+bamdad-dante22	 ansible_host=5.34.205.6
+
+[proxy_servers_shahriar]
+shahriar-dante9	 ansible_host=188.121.107.195
+shahriar-dante10 ansible_host=188.121.104.189
+
+[proxy_servers_simin]
+simin-dante11	 ansible_host=94.101.179.59
+simin-dante12	 ansible_host=94.101.179.177
+simin-dante13	 ansible_host=37.152.182.38
+simin-dante14	 ansible_host=185.97.117.160
+simin-dante15	 ansible_host=185.97.117.34
+simin-dante16	 ansible_host=94.101.179.150
+simin-dante17	 ansible_host=185.206.92.191
+simin-dante18	 ansible_host=37.152.180.40
+
+[proxy_servers:vars]
+ansible_port = 22
+ansible_user = ansible
+private_key_file = ~/.ssh
+
+[logging:children]
+elk
+logstash
+
+[elk:children]
+elk-all-nodes
+elk-kibana
+
+[elk-all-master-nodes:children]
+elk-master-init-node
+elk-master-nodes
+
+[elk-nodes-without-master-init-node:children]
+elk-master-nodes
+elk-nodes
+
+[elk-all-nodes:children]
+elk-all-master-nodes
+elk-nodes
+
+[elk-master-init-node]
+es-node1 ansible_host=172.26.59.34  roles="master,data" # Set the IP address of master init node
+
+[elk-master-nodes]
+
+[elk-nodes]
+es-node2 ansible_host=172.26.59.18 roles="data" # Set the IP address of master node
+
+[elk-kibana]
+es-kibana ansible_host= # Set the IP address of Kibana
+
+[logstash]
+logstash-node1 ansible_host= # Set the IP address of Logstash
+
+[logging:vars]
+ansible_port = 2237
+ansible_user = ansible
+private_key_file = ~/.ssh
+ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ProxyCommand="ssh -o \'ForwardAgent yes\' ansible@54.145.88.123 -p 2237 \'nc %h %p\'"'

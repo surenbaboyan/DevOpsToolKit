@@ -1,0 +1,27 @@
+---
+- name: "Install nginx via apt"
+  ansible.builtin.apt:
+    name: "nginx"
+    state: "present"
+    update_cache: "yes"
+  register: "apt_action"
+  retries: "50"
+  until: "apt_action is success or ('E: Could not get lock /var/lib/dpkg/lock-frontend' not in apt_action.msg and '/var/lib/dpkg/lock-frontend' not in apt_action.msg)"
+
+- name: "Remove /var/www/html"
+  ansible.builtin.file:
+    path: "/var/www/html"
+    state: "absent"
+
+- name: "Create project directory"
+  ansible.builtin.file:
+    path: "{{ PROJECT_PATH }}"
+    state: "directory"
+    owner: "{{ DEPLOY_USER }}"
+    group: "www-data"
+    mode: "775"
+
+- name: "Remove default conf"
+  ansible.builtin.file:
+    path: "/etc/nginx/sites-enabled/default"
+    state: "absent"

@@ -1,0 +1,33 @@
+server {
+    listen 80;
+{% if WITH_CERTIFICATE == "yes" %}
+    listen 443 ssl;
+{% endif %}
+    server_name {{ SERVER_NAME }};
+
+    root /var/www/{{ PROJECT_NAME }}/current;
+    index index.php index.html index.htm;
+
+    error_log  /var/log/nginx/error.log;
+    access_log /var/log/nginx/access.log main_json;
+
+{% if WITH_CERTIFICATE == "yes" %}
+    ssl_certificate /etc/nginx/ssl/nginx.crt;
+    ssl_certificate_key /etc/nginx/ssl/nginx.key;
+{% endif %}
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass unix:/run/php/php{{PHP_VERSION}}-fpm.sock;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+        fastcgi_read_timeout 300;
+    }
+}

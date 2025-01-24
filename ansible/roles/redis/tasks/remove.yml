@@ -1,0 +1,57 @@
+---
+- name: "Remove redis server"
+  tags: "remove_server"
+  block:
+    - name: "Run background save with authentication"
+      ansible.builtin.command: "redis-cli -a '{{ REDIS_PASSWORD }}' bgsave"
+      environment:
+        REDISCLI_AUTH: "{{ REDIS_PASSWORD }}"
+
+    - name: "Wait for the background save to complete"
+      ansible.builtin.command: "redis-cli -a '{{ REDIS_PASSWORD }}' info persistence"
+      register: "redis_info"
+      retries: 60
+      delay: 2
+      until: "'rdb_bgsave_in_progress:0' in redis_info.stdout"
+
+    - name: "Create directory path"
+      ansible.builtin.file:
+        path: "{{ REDIS_DUMPS_TARGET_PATH }}/redis-{{ REDIS_VERSION}}/{{ lookup('pipe','date +%Y-%m-%d_%H-%M') }}"
+        state: "directory"
+        owner: "root"
+        group: "root"
+
+    - name: "Copy the dump file to the desired location"
+      ansible.builtin.shell: "cp /var/lib/redis/dump.rdb '{{ REDIS_DUMPS_TARGET_PATH }}'/redis-{{ REDIS_VERSION}}/{{ lookup('pipe','date +%Y-%m-%d_%H-%M') }}"
+
+    - name: "Stop and disable Redis service"
+      ignore_errors: "yes"
+      ansible.builtin.service:
+        name: "redis-server"
+        state: "stopped"
+        enabled: "false"
+    
+    - name: "Remove Redis directory and configuration files"
+      block:
+        - name: "Remove Redis system user"
+          ansible.builtin.user:
+            name: "redis"
+            state: "absent"
+
+        - name: "Remove Redis DB data, config file and logs"
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: "absent"
+          loop: 
+            - "{{ REDIS_DATA_PATH }}"
+            - "{{ REDIS_CONF_FILE }}"
+            - "{{ REDIS_LOG_PATH }}"
+            - "{{ REDIS_SERVICE_FILE }}"
+
+    - name: "Reload systemd"
+      ansible.builtin.systemd:
+        daemon_reload: "yes"
+
+- name: "Remove Redis binary files from /usr/bin"
+  tags: "remove_binaries"
+  ansible.builtin.shell: "rm /usr/bin/redis-* && rm -rf /etc/redis"

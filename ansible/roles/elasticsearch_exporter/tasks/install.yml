@@ -1,0 +1,64 @@
+---
+- name: "Create elasticsearch_exporter system group"
+  ansible.builtin.group:
+    name: "elasticsearch_exporter"
+    state: "present"
+    system: "true"
+
+- name: "Create elasticsearch_exporter system user"
+  ansible.builtin.user:
+    name: "elasticsearch_exporter"
+    groups: "elasticsearch_exporter,elasticsearch"
+    shell: "/sbin/nologin"
+    system: "true"
+    create_home: "false"
+
+- name: "Install/Update elasticsearch_exporter"
+  block:
+  - name: "Get current OS architecture"
+    shell: "dpkg --print-architecture"
+    register: "OS_ARCHITECTURE"
+
+  - name: "Create dist directory for elasticsearch_exporter"
+    ansible.builtin.file:
+      path: "/tmp/elasticsearch_exporter"
+      state: "directory"
+
+  - name: "Download and unpack elasticsearch_exporter binaries"
+    ansible.builtin.unarchive:
+      src: "https://github.com/justwatchcom/elasticsearch_exporter/releases/download/v{{ ELASTICSEARCH_EXPORTER_VERSION }}/elasticsearch_exporter-{{ ELASTICSEARCH_EXPORTER_VERSION }}.linux-{{ OS_ARCHITECTURE.stdout }}.tar.gz"
+      dest: "/tmp/elasticsearch_exporter/"
+      owner: "root"
+      group: "root"
+      remote_src: "yes"
+    register: "download_archive"
+    until: "download_archive is succeeded"
+    retries: "5"
+    delay: "2"
+
+  - name: "Copy elasticsearch exporter binary file"
+    ansible.builtin.copy:
+      src: "/tmp/elasticsearch_exporter/elasticsearch_exporter-{{ ELASTICSEARCH_EXPORTER_VERSION }}.linux-{{ OS_ARCHITECTURE.stdout }}/elasticsearch_exporter"
+      dest: "{{ ELASTICSEARCH_EXPORTER_BINARY_INSTALL_DIR }}/elasticsearch_exporter"
+      mode: "0755"
+      owner: "root"
+      group: "root"
+      remote_src: "yes"
+
+  - name: "Remove elasticsearch_exporter download files"
+    ansible.builtin.file:
+      path: "/tmp/elasticsearch_exporter"
+      state: "absent"
+  tags: "update"
+  notify:
+    - "Reload elasticsearch_exporter"
+
+- name: "Copy elasticsearch_exporter systemd service file"
+  ansible.builtin.template:
+    src: "elasticsearch_exporter.service.j2"
+    dest: "{{ ELASTICSEARCH_EXPORTER_SERVICE_FILE_PATH }}/elasticsearch_exporter.service"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: "Restart elasticsearch_exporter"
+  tags: "service_file"

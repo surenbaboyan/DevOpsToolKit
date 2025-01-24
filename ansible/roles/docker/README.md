@@ -1,0 +1,5 @@
+- Find the "**DOCKER SERVICE ROLE**" and set values for the variables in the **common_settings**--->**vars**-->**main.yml** file. 
+- Run the **play_apps.yml** Ansible playbook file using the command: 
+  - **ansible-playbook play_apps.yml --tags=select_tag**
+    - To install Docker, use the **install** tag.
+    - To delete Docker, use the **remove** tag.

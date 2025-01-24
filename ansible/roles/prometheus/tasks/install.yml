@@ -1,0 +1,94 @@
+---
+- name: "Create prometheus system group"
+  ansible.builtin.group:
+    name: "prometheus"
+    system: "true"
+    state: "present"
+
+- name: "Create prometheus system user"
+  ansible.builtin.user:
+    name: "prometheus"
+    system: "true"
+    shell: "/usr/sbin/nologin"
+    group: "prometheus"
+    createhome: "false"
+    home: "{{ PROMETHEUS_DB_DIR }}"
+
+- name: "Create prometheus data directory"
+  ansible.builtin.file:
+    path: "{{ PROMETHEUS_DB_DIR }}"
+    state: "directory"
+    owner: "prometheus"
+    group: "prometheus"
+    mode: "0755"
+
+- name: "Create prometheus configuration directories"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "directory"
+    owner: "root"
+    group: "prometheus"
+    mode: "0770"
+  loop:
+    - "{{ PROMETHEUS_CONFIG_DIR }}"
+    - "{{ PROMETHEUS_CONFIG_DIR }}/rules"
+    - "{{ PROMETHEUS_CONFIG_DIR }}/file_sd"
+
+- name: "Install/Update Prometheus"
+  tags: "update"
+  block:
+  - name: "Get current OS architecture"
+    shell: "dpkg --print-architecture"
+    register: "OS_ARCHITECTURE"
+
+  - name: "Download and unpack prometheus binaries"
+    ansible.builtin.unarchive:
+      src: "https://github.com/prometheus/prometheus/releases/download/v{{ PROMETHEUS_VERSION }}/prometheus-{{ PROMETHEUS_VERSION }}.linux-{{ OS_ARCHITECTURE.stdout }}.tar.gz"
+      dest: "/tmp"
+      owner: "root"
+      group: "root"
+      remote_src: "yes"
+    register: "download_archive"
+    until: "download_archive is succeeded"
+    retries: "5"
+    delay: "2"
+
+  - name: "Propagate official prometheus and promtool binaries"
+    ansible.builtin.copy:
+      src: "/tmp/prometheus-{{ PROMETHEUS_VERSION }}.linux-{{OS_ARCHITECTURE.stdout}}/{{ item }}"
+      dest: "{{ PROMETHEUS_BINARY_INSTALL_DIR }}/{{ item }}"
+      mode: "0755"
+      owner: "root"
+      group: "root"
+      remote_src: "yes"
+    loop:
+      - "prometheus"
+      - "promtool"
+
+  - name: "Propagate official console templates"
+    ansible.builtin.copy:
+      src: "/tmp/prometheus-{{ PROMETHEUS_VERSION }}.linux-{{OS_ARCHITECTURE.stdout}}/{{ item }}"
+      dest: "{{ PROMETHEUS_CONFIG_DIR }}/{{ item }}"
+      mode: "0644"
+      owner: "root"
+      group: "root"
+      remote_src: "yes"
+    loop:
+      - "console_libraries"
+      - "consoles"
+  - name: "Remove prometheus download files"
+    ansible.builtin.file:
+      path: "/tmp/prometheus-{{ PROMETHEUS_VERSION }}.linux-{{ OS_ARCHITECTURE.stdout }}"
+      state: "absent"
+  notify:
+    - "Restart prometheus"
+
+- name: "Create systemd service unit"
+  ansible.builtin.template:
+    src: "prometheus.service.j2"
+    dest: "{{ PROMETHEUS_SERVICE_FILE_PATH }}/prometheus.service"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify:
+    - "Restart prometheus"

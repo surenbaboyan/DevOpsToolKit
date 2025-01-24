@@ -1,0 +1,22 @@
+---
+- name: "Stop and disable privoxy service"
+  ignore_errors: "yes"
+  ansible.builtin.service:
+    name: "privoxy"
+    state: "stopped"
+    enabled: "false"
+
+- name: "Remove the privoxy user"
+  ansible.builtin.user:
+    name: "privoxy"
+    state: "absent"
+
+- name: "Remove privoxy configuration files"
+  ansible.builtin.file:
+    state: "absent"
+    path: "{{ item }}"
+  loop:
+    - "{{ PRIVOXY_CONF_PATH }}"
+    - "{{ PRIVOXY_LOG_PATH }}"
+    - "{{ PRIVOXY_BIN_FILE }}"
+    - "{{ PRIVOXY_INITD_SERVICE }}"

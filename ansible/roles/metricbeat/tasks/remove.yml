@@ -1,0 +1,35 @@
+---
+- name: "Stop and disable Metricbeat service"
+  ignore_errors: "yes"
+  ansible.builtin.service:
+    name: "metricbeat"
+    state: "stopped"
+    enabled: "false"
+
+- name: "Remove metricbeat package"
+  ansible.builtin.apt:
+    name: "metricbeat"
+    state: "absent"
+    purge: "true"
+  register: "apt_action"
+  retries: "50"
+  until: "apt_action is success or ('E: Could not get lock /var/lib/dpkg/lock-frontend' not in apt_action.msg and '/var/lib/dpkg/lock-frontend' not in apt_action.msg)"
+
+- name: "Remove metricbeat repository"
+  apt_repository:
+    repo: 'deb https://artifacts.elastic.co/packages/{{ METRICBEAT_VERSION_FAMILY }}/apt stable main'
+    state: "absent"
+
+- name: "Remove Elasticsearch apt key."
+  apt_key:
+    id: "46095ACC8548582C1A2699A9D27D666CD88E42B4"
+    state: "absent"
+
+- name: "Remove metricbeat configuration and log files"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "absent"
+  loop:
+      - "{{ METRICBEAT_DATA_PATH }}"
+      - "{{ METRICBEAT_LOG_PATH }}"
+      - "{{ METRICBEAT_CONF_PATH }}"

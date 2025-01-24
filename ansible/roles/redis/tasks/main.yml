@@ -1,0 +1,18 @@
+--- 
+- block:
+    - name: "Install redis"
+      ansible.builtin.include_tasks: "install.yml"
+      tags:
+        - "redis_cli"
+        - "redis_server"
+        - "conf_file"
+  tags: "install"
+
+- block:
+    - name: "Remove redis server"
+      ansible.builtin.include_tasks: "remove.yml"
+      tags:
+        - "remove_server"
+        - "remove_binaries"
+  tags: "remove"
+  

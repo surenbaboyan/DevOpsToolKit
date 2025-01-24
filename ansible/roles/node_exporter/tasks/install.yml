@@ -1,0 +1,63 @@
+---
+- name: "Create the node_exporter group"
+  ansible.builtin.group:
+    name: "{{ NODE_EXPORTER_SYSTEM_GROUP }}"
+    state: "present"
+    system: "true"
+  when: NODE_EXPORTER_SYSTEM_GROUP != "root"
+
+- name: "Create the node_exporter user"
+  ansible.builtin.user:
+    name: "{{ NODE_EXPORTER_SYSTEM_USER }}"
+    groups: "{{ NODE_EXPORTER_SYSTEM_GROUP }}"
+    append: "true"
+    shell: "/usr/sbin/nologin"
+    system: "true"
+    create_home: "false"
+    home: "/"
+  when: NODE_EXPORTER_SYSTEM_USER != "root"
+
+- name: "Install/Update node_exporter"
+  block:
+  - name: "Get current OS architecture"
+    shell: "dpkg --print-architecture"
+    register: "OS_ARCHITECTURE"
+
+  - name: "Download and unpack node_exporter binaries"
+    ansible.builtin.unarchive:
+      src: "https://github.com/prometheus/node_exporter/releases/download/v{{ NODE_EXPORTER_VERSION }}/node_exporter-{{ NODE_EXPORTER_VERSION }}.linux-{{ OS_ARCHITECTURE.stdout }}.tar.gz"
+      dest: "/tmp"
+      owner: "root"
+      group: "root"
+      remote_src: "yes"
+    register: "download_archive"
+    until: "download_archive is succeeded"
+    retries: "5"
+    delay: "2"
+
+  - name: "Propagate node_exporter binaries"
+    ansible.builtin.copy:
+      src: "/tmp/node_exporter-{{ NODE_EXPORTER_VERSION }}.linux-{{ OS_ARCHITECTURE.stdout }}/node_exporter"
+      dest: "{{ NODE_EXPORTER_BINARY_INSTALL_DIR }}/node_exporter"
+      mode: "0755"
+      owner: "root"
+      group: "root"
+      remote_src: "yes"
+
+  - name: "Remove node_exporter download files"
+    ansible.builtin.file:
+      path: "/tmp/node_exporter-{{ NODE_EXPORTER_VERSION }}.linux-{{ OS_ARCHITECTURE.stdout }}"
+      state: "absent"
+  tags: "update"
+  notify:
+    - "Restart node_exporter"
+
+- name: "Copy the node_exporter systemd service file"
+  ansible.builtin.template:
+    src: "node_exporter.service.j2"
+    dest: "{{ NODE_EXPORTER_SERVICE_FILE_PATH }}/node_exporter.service"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: "Restart node_exporter"
+  tags: "service_file"

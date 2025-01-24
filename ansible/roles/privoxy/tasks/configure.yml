@@ -1,0 +1,6 @@
+---
+- name: "Create configuration"
+  ansible.builtin.template:
+    src: "config.j2"
+    dest: "{{ PRIVOXY_CONF_FILE }}"
+  notify: "Restart privoxy"

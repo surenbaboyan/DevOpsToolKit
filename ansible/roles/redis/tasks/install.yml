@@ -1,0 +1,113 @@
+---
+- name: "Install Redis"
+  tags: "redis_cli"
+  block:
+    - name: "Install Redis build dependencies"
+      ansible.builtin.apt:
+        name: "{{ REDIS_BUILD_DEPENDENCIES }}"
+        state: "latest"
+        update_cache: "yes"
+      register: "apt_action"
+      retries: "50"
+      until: "apt_action is success or ('E: Could not get lock /var/lib/dpkg/lock-frontend' not in apt_action.msg and '/var/lib/dpkg/lock-frontend' not in apt_action.msg)"
+
+    - name: "Download and extract Redis"
+      ansible.builtin.unarchive:
+        src: "http://download.redis.io/releases/redis-{{ REDIS_VERSION }}.tar.gz"
+        dest: "/tmp"
+        remote_src: "yes"
+
+    - name: "Check md5sum of redis-cli binary file (before install)"
+      ansible.builtin.shell:
+        cmd: "md5sum /usr/bin/redis-cli | awk '{print $1}'"
+      register: "redis_cli_checksum_before_install"
+          
+    - name: "Make build with params"
+      ansible.builtin.make:
+        chdir: "/tmp/redis-{{ REDIS_VERSION }}"
+        target: "install"
+        params:
+          "{{ REDIS_BUILD_PARAMS }}"
+        
+    - name: "Remove Redis source code from tmp directory"
+      ansible.builtin.file:
+        path: "/tmp/redis-{{ REDIS_VERSION }}"
+        state: "absent"
+
+- name: "Create redis directory and configuration files"
+  tags: "redis_server"
+  block:
+    - name: "Create redis system user"
+      ansible.builtin.user:
+        name: "redis"
+        comment: "Redis Server"
+        create_home: "no"
+
+    - name: "Create /var/lib/redis directory"
+      ansible.builtin.file:
+        path: "{{ REDIS_DATA_PATH }}"
+        state: "directory"
+        owner: "redis"
+        group: "redis"
+        mode: "0770"
+
+    - name: "Create redis directory"
+      ansible.builtin.file:
+        path: "{{ REDIS_CONF_FILE | dirname }}"
+        state: "directory"
+
+    - name: "Create redis log directory"
+      ansible.builtin.file:
+        path: "{{ REDIS_LOG_PATH }}"
+        state: "directory"
+        owner: "redis"
+        group: "adm"
+        mode: "2750"
+
+    - name: "Copy redis configuration file"
+      ansible.builtin.template:
+        src: "redis.conf.j2"
+        dest: "{{ REDIS_CONF_FILE }}"
+        owner: "redis"
+        group: "redis"
+        mode: "0640"
+      notify: "Restart redis"
+      tags: "conf_file"
+
+    - name: "Copy redis systemd unit file from files"
+      ansible.builtin.copy:
+        src: "redis.service"
+        dest: "{{ REDIS_SERVICE_FILE }}"
+        mode: "0644"
+
+    - name: "Reload systemd"
+      ansible.builtin.systemd:
+        daemon_reload: "yes"
+
+    - name: "Get service fact"
+      ansible.builtin.service_facts:
+    
+    - name: "Start and enable Redis service if not running"
+      ansible.builtin.service:
+        name: "redis-server"
+        state: "started"
+        enabled: "true"
+
+    - name: "Handle redis service failure"
+      ansible.builtin.service:
+        name: "redis-server"
+        state: "restarted"
+      when: "ansible_facts.services['redis-server.service'].state == 'failed'"
+
+    - name: "Check if redis binary file has changed (after install)"
+      block:
+        - name: "Calculate md5sum of binary redis-cli"
+          ansible.builtin.shell:
+            cmd: "md5sum /usr/bin/redis-cli | awk '{print $1}'"
+          register: "redis_cli_checksum_after_install"
+
+        - name: "Restart redis service if binary file changed"
+          ansible.builtin.service:
+            name: "redis-server"
+            state: "restarted"
+          when: "redis_cli_checksum_before_install.stdout != redis_cli_checksum_after_install.stdout"

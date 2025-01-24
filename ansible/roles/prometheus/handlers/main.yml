@@ -1,0 +1,17 @@
+---
+# handlers file for prometheus_install
+- name: "Restart prometheus"
+  listen: "restart prometheus"
+  ansible.builtin.systemd:
+    daemon_reload: "true"
+    name: "prometheus"
+    state: "restarted"
+    enabled: "true"
+  register: "prometheus_restarted"
+
+- name: "Reload prometheus"
+  listen: "reload prometheus"
+  ansible.builtin.systemd:
+    name: "prometheus"
+    state: "reloaded"
+  when: "prometheus_restarted is not defined"

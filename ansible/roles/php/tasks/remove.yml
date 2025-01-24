@@ -1,0 +1,27 @@
+---
+- name: "Stop and disable php service"
+  ignore_errors: "yes"
+  ansible.builtin.service:
+    name: "php{{ PHP_VERSION }}-fpm"
+    state: "stopped"
+    enabled: "false"
+
+- name: Remove PHP and its Modules
+  ansible.builtin.apt:
+    name: "php{{ PHP_VERSION }}-*"
+    state: absent
+    purge: "true"
+    autoremove: "true"
+
+- name: "Remove php repository"
+  ansible.builtin.apt_repository:
+    repo: "ppa:ondrej/php"
+    state: "absent"
+
+- name: "Remove php log folder and composer"
+  ansible.builtin.file:
+    state: absent
+    path: "{{ item }}"
+  loop:  
+    - "{{ PHP_LOG_PATH }}"
+    - "{{ COMPOSER_BIN_FILE }}"

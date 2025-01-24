@@ -1,0 +1,15 @@
+---
+- block:
+    - name: "Install MariaDB server"
+      ansible.builtin.include_tasks: "install.yml"
+  tags: "install"
+    
+- block:
+    - name: "Configure MariaDB server"
+      ansible.builtin.include_tasks: "configure.yml"
+  tags: "configure"
+  
+- block:
+    - name: "Remove MariaDB server"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

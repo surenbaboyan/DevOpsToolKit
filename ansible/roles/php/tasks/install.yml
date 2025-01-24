@@ -1,0 +1,44 @@
+--- 
+- name: "Install needed dependencies for php"
+  ansible.builtin.apt:
+    name: "{{ PHP_DEPENDENCIES }}"
+    state: "latest"
+    update_cache: "yes"
+  register: "apt_action"
+  retries: "50"
+  until: "apt_action is success or ('E: Could not get lock /var/lib/dpkg/lock-frontend' not in apt_action.msg and '/var/lib/dpkg/lock-frontend' not in apt_action.msg)"
+
+- name: "Add php repository"
+  ansible.builtin.apt_repository:
+    repo: "ppa:ondrej/php"
+    state: "present"
+
+- name: "Install php"
+  ansible.builtin.apt:
+    name: "{{ item }}"
+  loop:
+    - "php{{ PHP_VERSION }}"
+    - "php{{ PHP_VERSION }}-fpm"
+
+- name: "Install php modules"
+  ansible.builtin.apt:
+    name: "{{ PHP_MODULES }}"
+  tags: "update_modules"
+
+- name: "Create log directory"
+  ansible.builtin.file:
+    path: "{{ PHP_LOG_PATH }}"
+    state: "directory"
+    mode: "0755"
+
+- name: "Copy composer installation script and execute it"
+  tags: "install_composer"
+  block:
+    - name: "Copy composer script"
+      ansible.builtin.template:
+        src: "install_composer.sh.j2"
+        dest: "/tmp/install_composer.sh"
+        mode: "777"
+
+    - name: "Execute script"
+      ansible.builtin.shell: "/tmp/install_composer.sh"

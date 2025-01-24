@@ -1,0 +1,4 @@
+groups:
+- name: alert rules
+  rules:
+  {{ PROMETHEUS_ALERT_RULES | to_nice_yaml(indent=2,sort_keys=False) | indent(2,False) }}

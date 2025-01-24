@@ -1,0 +1,21 @@
+---
+- name: "Copy alertmanager template files"
+  ansible.builtin.copy:
+    src: "slack-templates.tmpl"
+    dest: "{{ ALERTMANAGER_CONFIG_DIR }}/templates/"
+    mode: "0644"
+  tags: "tmpl_file"
+  notify:
+    - "Reload alertmanager"
+
+- name: "Copy alertmanager config"
+  ansible.builtin.template:
+    src: "alertmanager.yml.j2"
+    dest: "{{ ALERTMANAGER_CONFIG_DIR }}/alertmanager.yml"
+    force: "true"
+    owner: "{{ ALERTMANAGER_SYSTEM_USER }}"
+    group: "{{ ALERTMANAGER_SYSTEM_GROUP }}"
+    mode: "0644"
+  tags: "conf_file"
+  notify:
+    - "Reload alertmanager"

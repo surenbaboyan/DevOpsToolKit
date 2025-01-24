@@ -1,0 +1,289 @@
+---
+- name: "Ensure certificate directory exists"
+  ansible.builtin.file:
+    dest: "{{ ELASTICSEARCH_SSL_CERTIFICATE_PATH }}"
+    state: "directory"
+    owner: "root"
+    group: "elasticsearch"
+    mode: "750"
+  when: "inventory_hostname in groups['elk-all-nodes']"
+
+## Setup ElasticSearch Master Init Node ##
+- name: "Configure Master Init node"
+  block:
+  - name: "Generate elasticsearch CA certificate"
+    ansible.builtin.shell:
+      cmd: "/usr/share/elasticsearch/bin/elasticsearch-certutil ca"
+      stdin: "{{ ELASTICSEARCH_CA_NAME }}\n{{ ELASTICSEARCH_CA_PASSWORD }}\n"
+
+  - name: "Copy CA certificate to certs directory"
+    ansible.builtin.copy:
+      src: "/usr/share/elasticsearch/{{ ELASTICSEARCH_CA_NAME }}"
+      dest: "{{ ELASTICSEARCH_SSL_CERTIFICATE_PATH }}"
+      owner: "root"
+      group: "elasticsearch"
+      mode: '0660'
+      remote_src: "yes"
+
+  - name: "Generate a certificate and private key for the master init node"
+    ansible.builtin.shell:
+      cmd: "/usr/share/elasticsearch/bin/elasticsearch-certutil cert --ca {{ ELASTICSEARCH_SSL_CERTIFICATE_PATH }}/{{ ELASTICSEARCH_CA_NAME }}"
+      stdin: "{{ ELASTICSEARCH_CA_PASSWORD }}\n{{ ELASTICSEARCH_CERT_NAME }}\n{{ ELASTICSEARCH_CERT_PASSWORD }}\n"
+
+  - name: "Copy certificate to certs directory"
+    ansible.builtin.copy:
+      src: "/usr/share/elasticsearch/{{ ELASTICSEARCH_CERT_NAME }}"
+      dest: "{{ ELASTICSEARCH_SSL_CERTIFICATE_PATH }}/{{ ELASTICSEARCH_CERT_NAME }}"
+      owner: "root"
+      group: "elasticsearch"
+      mode: "0660"
+      remote_src: "yes"
+
+  - name: "Generate a ssl.http certificate and private key for the master init node"
+    ansible.builtin.shell:
+      cmd: "/usr/share/elasticsearch/bin/elasticsearch-certutil http"
+      stdin: "N\nY\n/etc/elasticsearch/certs/{{ ELASTICSEARCH_CA_NAME }}\n{{ ELASTICSEARCH_CA_PASSWORD }}\n10y\nY\n{{ ansible_hostname }}\n\nY\n{{ ansible_default_ipv4.address }}\n\nY\nN\nN\n{{ ELASTICSEARCH_CERT_PASSWORD }}\n{{ ELASTICSEARCH_CERT_PASSWORD }}\n{{ ELASTICSEARCH_HTTP_GENERATE_OUTPUT_FILENAME }}\n"
+
+  - name: "Unzip http certificate"
+    ansible.builtin.unarchive:
+      src: "/usr/share/elasticsearch/{{ ELASTICSEARCH_HTTP_GENERATE_OUTPUT_FILENAME }}"
+      dest: "/usr/share/elasticsearch"
+      remote_src: "yes"
+
+  - name: "Copy http.p12 cert to certs directory"
+    ansible.builtin.copy:
+      src: "/usr/share/elasticsearch/elasticsearch/http.p12"
+      dest: "{{ ELASTICSEARCH_SSL_CERTIFICATE_PATH }}"
+      owner: "root"
+      group: "elasticsearch"
+      mode: '0660'
+      remote_src: "yes"
+
+  - name: "Set keystore password"
+    ansible.builtin.shell:
+      cmd: "echo {{ ELASTICSEARCH_CERT_PASSWORD }} | /usr/share/elasticsearch/bin/elasticsearch-keystore add -x -f 'xpack.security.{{ item }}.ssl.keystore.secure_password'"
+    no_log: "True"
+    loop:
+      - "http"
+      - "transport"
+
+  - name: "Set truststore password"
+    ansible.builtin.shell:
+      cmd: "echo {{ ELASTICSEARCH_CERT_PASSWORD }} | /usr/share/elasticsearch/bin/elasticsearch-keystore add -x -f 'xpack.security.{{ item }}.ssl.truststore.secure_password'"
+    no_log: "True"
+    loop:
+      - "http"
+      - "transport"
+
+  - name: "Remove not needed files and directories"
+    ansible.builtin.file:
+      path: "/usr/share/elasticsearch/{{ item }}"
+      state: "absent"
+    loop:
+      - "elasticsearch"
+      - "kibana"
+      - "{{ ELASTICSEARCH_HTTP_GENERATE_OUTPUT_FILENAME }}"
+      - "{{ ELASTICSEARCH_CA_NAME }}"
+
+  - name: "Config Elasticsearch master init node"
+    tags: "conf_file"
+    ansible.builtin.template:
+      src: "elasticsearch.yml.j2"
+      dest: "{{ ELASTICSEARCH_CONFIG_DIR }}/elasticsearch.yml"
+      owner: "root"
+      group: "elasticsearch"
+      mode: '0664'
+    notify: "Reload elasticsearch"
+
+  - name: "Enable and start master init Elasticsearch service"
+    service:
+      name: "elasticsearch"
+      state: "started"
+      enabled: "yes"
+    register: "elasticsearch_restarted"
+
+  - name: "Set Elasticsearch password"
+    tags: "reset_password"
+    ansible.builtin.shell:
+      cmd: "{% if ELK_VERSION is version('8.0.0', '>=') %}/usr/share/elasticsearch/bin/elasticsearch-reset-password -b -i -u elastic{% else %}/usr/share/elasticsearch/bin/elasticsearch-setup-passwords interactive -b{% endif %}"
+      stdin: "{% if ELK_VERSION is version('8.0.0', '>=') %}{{ ELASTICSEARCH_PASSWORD }}\n{{ ELASTICSEARCH_PASSWORD }}\n{% else %}{{ ELASTICSEARCH_PASSWORD }}\n{{ ELASTICSEARCH_PASSWORD }}\n{{ ELASTICSEARCH_PASSWORD }}\n{{ ELASTICSEARCH_PASSWORD }}\n{{ ELASTICSEARCH_PASSWORD }}\n{{ ELASTICSEARCH_PASSWORD }}\n{{ ELASTICSEARCH_PASSWORD }}\n{{ ELASTICSEARCH_PASSWORD }}\n{{ ELASTICSEARCH_PASSWORD }}\n{{ ELASTICSEARCH_PASSWORD }}\n{{ ELASTICSEARCH_PASSWORD }}\n{{ ELASTICSEARCH_PASSWORD }}\n{% endif %}"
+
+  when: "inventory_hostname in groups['elk-master-init-node'] and ('configure' in ansible_run_tags or 'reset_password' in ansible_run_tags)"
+
+- name: "Copy CA certificate to Ansible control machine from master init node"
+  ansible.builtin.fetch:
+    src: "{{ ELASTICSEARCH_SSL_CERTIFICATE_PATH }}/{{ ELASTICSEARCH_CA_NAME }}"
+    dest: "/tmp/{{ ELASTICSEARCH_CA_NAME }}"
+    flat: "yes"
+    fail_on_missing: "yes"
+  when: "inventory_hostname in groups['elk-master-init-node']"
+
+- name: "Copy CA certificate from Ansible control machine to nodes server"
+  ansible.builtin.copy:
+    src: "/tmp/{{ ELASTICSEARCH_CA_NAME }}"
+    dest: "{{ ELASTICSEARCH_SSL_CERTIFICATE_PATH }}/{{ ELASTICSEARCH_CA_NAME }}"
+    owner: "root"
+    group: "elasticsearch"
+    mode: '0660'
+  when: "inventory_hostname in groups['elk-nodes-without-master-init-node']"
+
+- name: "Generate a certificate and private key for the nodes in cluster"
+  ansible.builtin.shell:
+    cmd: "/usr/share/elasticsearch/bin/elasticsearch-certutil cert --ca {{ ELASTICSEARCH_SSL_CERTIFICATE_PATH }}/{{ ELASTICSEARCH_CA_NAME }}"
+    stdin: "{{ ELASTICSEARCH_CA_PASSWORD }}\n{{ ELASTICSEARCH_CERT_NAME }}\n{{ ELASTICSEARCH_CERT_PASSWORD }}\n"
+  when: "inventory_hostname in groups['elk-nodes-without-master-init-node']"
+
+- name: "Copy certificate to certs directory"
+  ansible.builtin.copy:
+    src: "/usr/share/elasticsearch/{{ ELASTICSEARCH_CERT_NAME }}"
+    dest: "{{ ELASTICSEARCH_SSL_CERTIFICATE_PATH }}/{{ ELASTICSEARCH_CERT_NAME }}"
+    owner: "root"
+    group: "elasticsearch"
+    mode: "0660"
+    remote_src: "yes"
+  when: "inventory_hostname in groups['elk-nodes-without-master-init-node']"
+
+- name: "Generate a ssl.http certificate and private key for the nodes in cluster"
+  ansible.builtin.shell:
+    cmd: "/usr/share/elasticsearch/bin/elasticsearch-certutil http"
+    stdin: "N\nY\n/etc/elasticsearch/certs/{{ ELASTICSEARCH_CA_NAME }}\n{{ ELASTICSEARCH_CA_PASSWORD }}\n10y\nY\n{{ ansible_hostname }}\n\nY\n{{ ansible_default_ipv4.address }}\n\nY\nN\nN\n{{ ELASTICSEARCH_CERT_PASSWORD }}\n{{ ELASTICSEARCH_CERT_PASSWORD }}\n{{ ELASTICSEARCH_HTTP_GENERATE_OUTPUT_FILENAME }}\n"
+  when: "inventory_hostname in groups['elk-nodes-without-master-init-node']"
+
+- name: "Unzip http certificate"
+  ansible.builtin.unarchive:
+    src: "/usr/share/elasticsearch/{{ ELASTICSEARCH_HTTP_GENERATE_OUTPUT_FILENAME }}"
+    dest: "/usr/share/elasticsearch"
+    remote_src: "yes"
+  when: "inventory_hostname in groups['elk-nodes-without-master-init-node']"
+
+- name: "Copy http.p12 cert to certs directory"
+  ansible.builtin.copy:
+    src: "/usr/share/elasticsearch/elasticsearch/http.p12"
+    dest: "{{ ELASTICSEARCH_SSL_CERTIFICATE_PATH }}"
+    owner: "root"
+    group: "elasticsearch"
+    mode: '0660'
+    remote_src: "yes"
+  when: "inventory_hostname in groups['elk-nodes-without-master-init-node']"
+
+- name: "Set keystore password"
+  ansible.builtin.shell:
+    cmd: "echo {{ ELASTICSEARCH_CERT_PASSWORD }} | /usr/share/elasticsearch/bin/elasticsearch-keystore add -x -f 'xpack.security.{{ item }}.ssl.keystore.secure_password'"
+  no_log: "True"
+  loop:
+    - "http"
+    - "transport"
+  when: "inventory_hostname in groups['elk-nodes-without-master-init-node']"
+
+- name: "Set truststore password"
+  ansible.builtin.shell:
+    cmd: "echo {{ ELASTICSEARCH_CERT_PASSWORD }} | /usr/share/elasticsearch/bin/elasticsearch-keystore add -x -f 'xpack.security.{{ item }}.ssl.truststore.secure_password'"
+  no_log: "True"
+  loop:
+    - "http"
+    - "transport"
+  when: "inventory_hostname in groups['elk-nodes-without-master-init-node']"
+
+- name: "Remove not needed files and directories"
+  ansible.builtin.file:
+    path: "/usr/share/elasticsearch/{{ item }}"
+    state: "absent"
+  loop:
+    - "elasticsearch"
+    - "kibana"
+    - "{{ ELASTICSEARCH_HTTP_GENERATE_OUTPUT_FILENAME }}"
+    - "{{ ELASTICSEARCH_CA_NAME }}"
+  when: "inventory_hostname in groups['elk-nodes-without-master-init-node']"
+
+- name: "Config Elasticsearch nodes"
+  tags: "conf_file"
+  ansible.builtin.template:
+    src: "elasticsearch.yml.j2"
+    dest: "{{ ELASTICSEARCH_CONFIG_DIR }}/elasticsearch.yml"
+    owner: "root"
+    group: "elasticsearch"
+    mode: '0664'
+  notify: "Reload elasticsearch"
+  when: "inventory_hostname in groups['elk-nodes-without-master-init-node']"
+
+- name: "Reload systemd daemon on Elasticsearch group elk-nodes, Enable and start Elasticsearch service"
+  ansible.builtin.systemd:
+    daemon_reload: "true"
+    name: "elasticsearch"
+    state: "started"
+    enabled: "true"
+  register: "elasticsearch_restarted"
+  when: "inventory_hostname in groups['elk-nodes-without-master-init-node']"
+
+- name: "Create service token for Kibana"
+  ansible.builtin.shell:
+    cmd: "curl -X POST -k -u elastic:{{ ELASTICSEARCH_PASSWORD }} https://{{ ansible_default_ipv4.address }}:9200/_security/service/elastic/kibana/credential/token/kibana_token"
+  register: "service_token"
+  when: "inventory_hostname in groups['elk-master-init-node'] and 'configure' in ansible_run_tags"
+
+- name: "Set fact with service token on Kibana host"
+  ansible.builtin.set_fact:
+    kibana_token: "{{ (service_token.stdout | from_json).token.value }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: "true"
+  loop: "{{ groups['elk-kibana'] }}"
+  when: "inventory_hostname in groups['elk-master-init-node'] and 'configure' in ansible_run_tags"
+
+- name: "Register kibana"
+  ansible.builtin.shell:
+    cmd: "/usr/share/kibana/bin/kibana-keystore add elasticsearch.serviceAccountToken --stdin"
+    stdin: "{{ kibana_token }}"
+  when: "inventory_hostname in groups['elk-kibana']"
+
+- name: "Configure Kibana node"
+  tags: "kibana"
+  block:
+    - name: "Ensure certificate directory exists in Kibana"
+      ansible.builtin.file:
+        dest: "{{ KIBANA_SSL_CERTIFICATE_PATH }}"
+        state: "directory"
+        owner: "root"
+        group: "kibana"
+        mode: "750"
+
+    - name: "Copy CA certificate to Ansible control machine from master init node"
+      ansible.builtin.fetch:
+        src: "{{ ELASTICSEARCH_SSL_CERTIFICATE_PATH }}/{{ ELASTICSEARCH_CA_NAME }}"
+        dest: "/tmp/{{ ELASTICSEARCH_CA_NAME }}"
+        flat: "yes"
+        fail_on_missing: "yes"
+      when: "inventory_hostname in groups['elk-master-init-node']"
+
+    - name: "Copy CA certificate from Ansible control machine to kibana server"
+      ansible.builtin.copy:
+        src: "/tmp/{{ ELASTICSEARCH_CA_NAME }}"
+        dest: "{{ KIBANA_SSL_CERTIFICATE_PATH }}/{{ ELASTICSEARCH_CA_NAME }}"
+        owner: "root"
+        group: "kibana"
+        mode: '0660'
+
+    - name: "Config Kibana"
+      ansible.builtin.template:
+        src: "kibana.yml.j2"
+        dest: "{{ KIBANA_CONFIG_DIR }}/kibana.yml"
+        owner: "root"
+        group: "kibana"
+        mode: '0664'
+
+    - name: "Extract certificate from elastic ca PKCS12 file"
+      ansible.builtin.shell:
+        cmd: "openssl pkcs12 -in {{ KIBANA_SSL_CERTIFICATE_PATH }}/{{ ELASTICSEARCH_CA_NAME }} -out {{ KIBANA_SSL_CERTIFICATE_PATH }}/{{ KIBANA_SSL_CERTIFICATE_NAME }} -nokeys -passin pass:{{ ELASTICSEARCH_CA_PASSWORD }}"
+
+    - name: "Change certificate ownership, group and permissions"
+      ansible.builtin.file:
+        path: "{{ KIBANA_SSL_CERTIFICATE_PATH }}/{{ KIBANA_SSL_CERTIFICATE_NAME }}"
+        owner: "root"
+        group: "kibana"
+        mode: "0660"
+
+    - name: "Start Kibana service"
+      ansible.builtin.systemd:
+        name: "kibana"
+        state: "started"
+        enabled: "true"
+  when: "inventory_hostname in groups['elk-kibana']"

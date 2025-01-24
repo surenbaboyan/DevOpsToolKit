@@ -1,0 +1,39 @@
+---
+- name: "Stop the Docker service"
+  ignore_errors: "yes"
+  ansible.builtin.service:
+    name: "docker"
+    state: "stopped"
+
+- name: "Uninstall all conflicting packages"
+  ignore_errors: "yes"
+  ansible.builtin.shell: "for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do sudo apt-get remove $pkg; done"
+
+- name: "Remove the docker engine packages"
+  ansible.builtin.apt:
+    name: "{{ DOCKER_ENGINE }}"
+    state: "absent"
+    purge: "true"
+  register: "apt_action"
+  retries: "50"
+  until: "apt_action is success or ('E: Could not get lock /var/lib/dpkg/lock-frontend' not in apt_action.msg and '/var/lib/dpkg/lock-frontend' not in apt_action.msg)"
+
+- name: "Delete the docker directories and files"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "absent"
+  loop:
+    - "{{ DOCKER_DATA_PATH }}"
+    - "{{ CONTAINERD_DATA_PATH }}"
+    - "/etc/apt/keyrings"
+    - "/usr/local/bin/docker-compose"
+    - "/usr/bin/docker-compose"
+    - "/etc/docker"
+    - "/usr/share/keyrings/docker-archive-keyring.gpg"
+    - "/etc/apt/sources.list.d/docker.list"
+    - "/etc/apt/sources.list.d/archive_uri-https_download_docker_com_linux_ubuntu-jammy.list"
+
+- name: "Delete the Docker group"
+  ansible.builtin.group:
+    name: "docker"
+    state: "absent"

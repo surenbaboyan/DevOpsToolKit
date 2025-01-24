@@ -1,0 +1,14 @@
+---
+- name: "Stop phpfpm_exporter service"
+  ansible.builtin.systemd:
+    name: "phpfpm_exporter.service"
+    state: "stopped"
+  ignore_errors: "true"
+
+- name: "Remove phpfpm_exporter binary and systemd unit"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "absent"
+  loop:
+    - "{{ PHPFPM_EXPORTER_BINARY_INSTALL_DIR }}/phpfpm_exporter"
+    - "{{ PHPFPM_EXPORTER_SERVICE_FILE_PATH }}/phpfpm_exporter.service"

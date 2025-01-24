@@ -1,0 +1,18 @@
+--- 
+- block:
+    - name: "Install mongodb"
+      ansible.builtin.include_tasks: "install.yml"
+  tags: "install"
+
+- block:
+    - name: "Configure mongodb"
+      ansible.builtin.include_tasks: "configure.yml"
+      tags:
+        - "root_user"
+        - "database"
+  tags: "configure"
+
+- block:
+    - name: "Remove mongodb" 
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

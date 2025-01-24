@@ -1,0 +1,29 @@
+---
+- name: "Stop elasticsearch_exporter service"
+  ansible.builtin.systemd: # noqa ignore-errors
+    name: "elasticsearch_exporter.service"
+    state: "stopped"
+  ignore_errors: "true"
+
+- name: "Remove elasticsearch_exporter binary and systemd unit files"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "absent"
+  loop:
+    - "{{ ELASTICSEARCH_EXPORTER_BINARY_INSTALL_DIR }}/elasticsearch_exporter"
+    - "{{ ELASTICSEARCH_EXPORTER_SERVICE_FILE_PATH }}/elasticsearch_exporter.service"
+
+- name: "Remove the elasticsearch_exporter system user"
+  ansible.builtin.user:
+    name: "elasticsearch_exporter"
+    force: "true"
+    state: "absent"
+
+- name: "Remove elasticsearch_exporter system group"
+  ansible.builtin.group:
+    name: "elasticsearch_exporter"
+    state: "absent"
+
+- name: "Daemon Reload"
+  ansible.builtin.systemd_service:
+    daemon_reload: "true"

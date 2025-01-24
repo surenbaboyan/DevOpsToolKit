@@ -1,0 +1,21 @@
+--- 
+- block:
+    - name: "Install php"
+      ansible.builtin.include_tasks: "install.yml"
+      tags:
+        - "update_modules"
+        - "install_composer"
+  tags: "install"
+  
+- block:
+    - name: "Configure php"
+      ansible.builtin.include_tasks: "configure.yml"
+      tags:
+        - "conf_php"
+        - "conf_nginx"
+  tags: "configure"
+
+- block:
+    - name: "Remove php"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

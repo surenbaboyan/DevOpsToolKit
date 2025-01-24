@@ -1,0 +1,14 @@
+---
+# tasks file for elasticsearch_exporter
+- block:
+    - name: "Install elasticsearch_exporter service"
+      ansible.builtin.include_tasks: "install.yml"
+      tags:
+        - "service_file"
+        - "update"
+  tags: "install"
+
+- block:
+    - name: "Remove elasticsearch_exporter service"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

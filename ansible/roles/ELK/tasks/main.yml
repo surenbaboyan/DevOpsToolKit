@@ -1,0 +1,22 @@
+---
+# tasks file for elasticsearch
+- block:
+    - name: "Install elasticsearch"
+      ansible.builtin.include_tasks: "install.yml"
+  tags: "install"
+
+- block:
+    - name: "Configure elasticsearch service"
+      ansible.builtin.include_tasks: "configure.yml"
+      tags:
+        - "kibana"
+        - "reset_password"
+        - "conf_file"
+  tags:
+    - "configure"
+    - "re_configure"
+
+- block:
+    - name: "Remove elasticsearch"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

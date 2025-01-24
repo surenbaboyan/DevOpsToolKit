@@ -1,0 +1,44 @@
+---
+- name: "Configure prometheus"
+  ansible.builtin.template:
+    src: "prometheus.yml.j2"
+    dest: "{{ PROMETHEUS_CONFIG_DIR }}/prometheus.yml"
+    force: "true"
+    owner: "root"
+    group: "prometheus"
+    mode: "0640"
+  tags: "conf_file"
+  notify:
+    - "Reload prometheus"
+
+- name: "Configure alerting rules"
+  ansible.builtin.template:
+    src: "alert.rules.j2"
+    dest: "{{ PROMETHEUS_CONFIG_DIR }}/rules/alert.rules"
+    owner: "root"
+    group: "prometheus"
+    mode: "0640"
+    validate: "{{ PROMETHEUS_BINARY_INSTALL_DIR }}/promtool check rules %s"
+  tags: "rule_file"
+  notify:
+    - "Reload prometheus"
+
+- name: "Update new hosts, add into Prometheus"
+  block:
+    - name: "Update hosts file"
+      ansible.builtin.copy:
+        src: "hosts"
+        dest: "/etc/hosts"
+
+    - name: "Configure prometheus static targets"
+      ansible.builtin.copy:
+        content: |
+          {{ item.value | to_nice_yaml(indent=2, sort_keys=False) }}
+        dest: "{{ PROMETHEUS_CONFIG_DIR }}/file_sd/{{ item.key }}.yml"
+        force: "true"
+        owner: "root"
+        group: "prometheus"
+        mode: "0640"
+      with_dict: "{{ PROMETHEUS_TARGETS }}"
+      when: "PROMETHEUS_TARGETS != {}"
+  tags: "targets"

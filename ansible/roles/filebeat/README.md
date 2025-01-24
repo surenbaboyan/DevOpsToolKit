@@ -1,0 +1,7 @@
+- Find the "**FILEBEAT SERVICE ROLE**" and set values for the variables in the **common_settings**--->**vars**--->**main.yml** file.
+- Run the Ansible playbook file (play_apps.yml) using the command: 
+  - **ansible-playbook play_apps.yml --tags=select_tags_separated_by_comma**
+  - To install Filebeat, use the **install,configure** tags.
+  - To update the config file, use the **configure** tag. 
+  - To delete Filebeat, use the **remove** tag.
+- When Filebeat is proposed during the installation, type "yes".

@@ -1,0 +1,49 @@
+---
+- name: "Install/Update phpfpm_exporter"
+  block:
+  - name: "Get current OS architecture"
+    shell: "dpkg --print-architecture"
+    register: "OS_ARCHITECTURE"
+
+  - name: "Create directory for phpfpm_exporter"
+    ansible.builtin.file:
+      path: "/tmp/phpfpm-exporter"
+      state: "directory"
+
+  - name: "Download and unpack phpfpm_exporter binary"
+    ansible.builtin.unarchive:
+      src: "https://github.com/Lusitaniae/phpfpm_exporter/releases/download/v{{ PHPFPM_EXPORTER_VERSION }}/phpfpm_exporter-{{ PHPFPM_EXPORTER_VERSION }}.linux-{{ OS_ARCHITECTURE.stdout }}.tar.gz"
+      dest: "/tmp/phpfpm-exporter"
+      owner: "root"
+      group: "root"
+      remote_src: "yes"
+      extra_opts: [--strip-components=1]
+    register: "download_archive"
+    until: "download_archive is succeeded"
+    retries: "5"
+    delay: "2"
+
+  - name: "Copy phpfpm exporter binary file"
+    ansible.builtin.copy:
+      src: "/tmp/phpfpm-exporter/phpfpm_exporter"
+      dest: "{{ PHPFPM_EXPORTER_BINARY_INSTALL_DIR }}/phpfpm_exporter"
+      mode: "0755"
+      owner: "root"
+      group: "root"
+      remote_src: "yes"
+
+  - name: "Remove phpfpm_exporter download files"
+    ansible.builtin.file:
+      path: "/tmp/phpfpm-exporter"
+      state: "absent"
+  notify:
+    - "Reload phpfpm_exporter"
+
+- name: "Copy phpfpm_exporter systemd service file"
+  ansible.builtin.template:
+    src: "phpfpm_exporter.service.j2"
+    dest: "{{ PHPFPM_EXPORTER_SERVICE_FILE_PATH }}/phpfpm_exporter.service"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: "Restart phpfpm_exporter"

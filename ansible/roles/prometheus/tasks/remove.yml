@@ -1,0 +1,30 @@
+---
+# tasks file for node_exporter uninstall
+
+- name: "Stop prometheus service"
+  ansible.builtin.systemd:
+    name: "prometheus.service"
+    state: "stopped"
+  ignore_errors: "true"
+
+- name: "Remove prometheus binary and systemd unit"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: "absent"
+  loop:
+    - "{{ PROMETHEUS_BINARY_INSTALL_DIR }}/prometheus"
+    - "{{ PROMETHEUS_BINARY_INSTALL_DIR }}/promtool"
+    - "{{ PROMETHEUS_SERVICE_FILE_PATH }}/prometheus.service"
+    - "{{ PROMETHEUS_CONFIG_DIR }}"
+    - "{{ PROMETHEUS_DB_DIR }}"
+
+- name: "Remove the prometheus system user"
+  ansible.builtin.user:
+    name: "prometheus"
+    force: "true"
+    state: "absent"
+
+- name: "Remove prometheus system group"
+  ansible.builtin.group:
+    name: "prometheus"
+    state: "absent"

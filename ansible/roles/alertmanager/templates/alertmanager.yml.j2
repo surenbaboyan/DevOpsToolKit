@@ -1,0 +1,147 @@
+global:
+  resolve_timeout: {{ ALERTMANAGER_RESOLVE_TIMEOUT | quote}}
+
+templates:
+    - {{ ALERTMANAGER_CONFIG_DIR }}/templates/*.tmpl
+
+route:
+    receiver: "slack-notifications"
+
+    routes:
+      - receiver: 'slack-notifications'
+        group_by: [...]
+        group_wait: 20s
+        group_interval: 40s
+        repeat_interval: 4h
+        match:
+         alerttype: system
+      - receiver: 'slack-notifications-for-services-info'
+        group_by: [...]
+        group_wait: 1s
+        group_interval: 1s
+        match:
+         severity: info
+         alerttype: SystemServices
+      - receiver: 'slack-notifications-for-services'
+        group_by: [...]
+        group_wait: 1s
+        group_interval: 1s
+        match:
+         alerttype: SystemServices
+      - receiver: 'slack-notifications-for-supervisor-jobs'
+        group_by: [...]
+        group_wait: 1s
+        group_interval: 1s
+        repeat_interval: 10m
+        match:
+          alerttype: ServiceSupervisorTask
+      - receiver: 'slack-notifications-for-nginx'
+        group_by: [...]
+        group_wait: 1s
+        group_interval: 1s
+        repeat_interval: 10m
+        match:
+          alerttype: ServiceNginx
+      - receiver: 'slack-notifications-for-php-fpm'
+        group_by: [...]
+        group_wait: 1s
+        group_interval: 1s
+        repeat_interval: 10m
+        match:
+          alerttype: ServicePhpFpm
+      - receiver: 'slack-notifications-for-elasticsearch'
+        group_by: [...]
+        group_wait: 1s
+        group_interval: 1s
+        repeat_interval: 10m
+        match:
+          alerttype: Elasticsearch
+
+receivers:
+  - name: 'web.hook'
+    webhook_configs:
+      - url: 'http://127.0.0.1:5001/'
+
+  - name: 'slack-notifications'
+    slack_configs:
+    - channel: '#prometheus-alerts'
+      api_url: 'https://hooks.slack.com/services/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'
+      send_resolved: true
+      icon_url: https://avatars3.githubusercontent.com/u/3380462
+      title: '{% raw %}{{ template "slack.title" . }}'
+      color: '{{ template "slack.color" . }}'
+      fallback: '{{ template "slack.desktop.notification" . }}'
+      text: '{{ template "slack.text" . }}{% endraw %}'
+
+  - name: 'slack-notifications-for-services'
+    slack_configs:
+    - channel: '#prometheus-alerts-services'
+      api_url: 'https://hooks.slack.com/services/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'
+      send_resolved: true
+      icon_url: https://avatars3.githubusercontent.com/u/3380462
+      title: '{% raw %}{{ template "slack.title" . }}'
+      color: '{{ template "slack.color" . }}'
+      fallback: '{{ template "slack.desktop.notification" . }}'
+      text: '{{ template "slack.text" . }}{% endraw %}'
+
+  - name: 'slack-notifications-for-services-info'
+    slack_configs:
+    - channel: '#prometheus-alerts-services'
+      api_url: 'https://hooks.slack.com/services/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'
+      send_resolved: false
+      icon_url: https://avatars3.githubusercontent.com/u/3380462
+      title: '{% raw %}{{ template "slack.title" . }}'
+      color: '{{ template "slack.color" . }}'
+      fallback: '{{ template "slack.desktop.notification" . }}'
+      text: '{{ template "slack.text" . }}{% endraw %}'
+
+  - name: 'slack-notifications-for-supervisor-jobs'
+    slack_configs:
+    - channel: '#prometheus-alerts-supervisor-jobs'
+      api_url: 'https://hooks.slack.com/services/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'
+      send_resolved: true
+      icon_url: https://avatars3.githubusercontent.com/u/3380462
+      title: '{% raw %}{{ template "slack.title" . }}'
+      color: '{{ template "slack.color" . }}'
+      fallback: '{{ template "slack.desktop.notification" . }}'
+      text: '{{ template "slack.text" . }}{% endraw %}'
+
+  - name: 'slack-notifications-for-nginx'
+    slack_configs:
+    - channel: '#prometheus-alerts-nginx'
+      api_url: 'https://hooks.slack.com/services/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'
+      send_resolved: true
+      icon_url: https://avatars3.githubusercontent.com/u/3380462
+      title: '{% raw %}{{ template "slack.title" . }}'
+      color: '{{ template "slack.color" . }}'
+      fallback: '{{ template "slack.desktop.notification" . }}'
+      text: '{{ template "slack.text" . }}{% endraw %}'
+
+  - name: 'slack-notifications-for-php-fpm'
+    slack_configs:
+    - channel: '#prometheus-alerts-php-fpm'
+      api_url: 'https://hooks.slack.com/services/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'
+      send_resolved: true
+      icon_url: https://avatars3.githubusercontent.com/u/3380462
+      title: '{% raw %}{{ template "slack.title" . }}'
+      color: '{{ template "slack.color" . }}'
+      fallback: '{{ template "slack.desktop.notification" . }}'
+      text: '{{ template "slack.text" . }}{% endraw %}'
+
+  - name: 'slack-notifications-for-elasticsearch'
+    slack_configs:
+    - channel: '#prometheus-alerts-elasticsearch'
+      api_url: 'https://hooks.slack.com/services/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'
+      send_resolved: true
+      icon_url: https://avatars3.githubusercontent.com/u/3380462
+      title: '{% raw %}{{ template "slack.title" . }}'
+      color: '{{ template "slack.color" . }}'
+      fallback: '{{ template "slack.desktop.notification" . }}'
+      text: '{{ template "slack.text" . }}{% endraw %}'
+
+inhibit_rules:
+- source_match:
+    severity: 'critical'
+  target_match:
+    severity: 'warning'
+  equal: ['alertname','instance']

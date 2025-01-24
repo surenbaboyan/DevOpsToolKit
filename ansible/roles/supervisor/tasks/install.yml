@@ -1,0 +1,9 @@
+---
+- name: "Install supervisor via apt"
+  ansible.builtin.apt:
+    name: "supervisor"
+    state: "latest"
+    update_cache: "yes"
+  register: "apt_action"
+  retries: "50"
+  until: "apt_action is success or ('E: Could not get lock /var/lib/dpkg/lock-frontend' not in apt_action.msg and '/var/lib/dpkg/lock-frontend' not in apt_action.msg)"

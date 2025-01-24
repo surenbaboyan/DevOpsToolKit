@@ -1,0 +1,79 @@
+---
+- name: "Install dependencies for grafana"
+  ansible.builtin.apt:
+    name: "{{ GRAFANA_DEPENDENCIES }}"
+    state: "present"
+    update_cache: "true"
+
+- name: "Create Grafana system group"
+  ansible.builtin.group:
+    name: "{{ GRAFANA_GROUP }}"
+    state: "present"
+    system: "true"
+
+- name: "Create Grafana system user"
+  ansible.builtin.user:
+    comment: "Grafana service account"
+    name: "{{ GRAFANA_USER }}"
+    group: "{{ GRAFANA_GROUP }}"
+    shell: "/sbin/nologin"
+    system: "true"
+    create_home: "false"
+
+- name: "Create grafana needed directories"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: "directory"
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ GRAFANA_GROUP }}"
+    mode: "{{ item.mode | default('0755') }}"
+  loop:
+    - path: "{{ GRAFANA_INSTALL_DIR }}"
+    - path: "{{ GRAFANA_CONFIG_DIR }}"
+    - path: "{{ GRAFANA_PROVISIONING_CFG_DIR }}"
+    - path: "{{ GRAFANA_CONFIG_DIR }}/provisioning/datasources"
+    - path: "{{ GRAFANA_CONFIG_DIR }}/provisioning/dashboards"
+    - path: "{{ GRAFANA_CONFIG_DIR }}/provisioning/notifiers"
+    - path: "{{ GRAFANA_CONFIG_DIR }}/provisioning/notification"
+    - path: "{{ GRAFANA_CONFIG_DIR }}/provisioning/plugins"
+    - path: "{{ GRAFANA_LOG_DIR }}"
+      owner: "{{ GRAFANA_USER }}"
+    - path: "{{ GRAFANA_DATA_DIR }}"
+      owner: "{{ GRAFANA_USER }}"
+    - path: "{{ GRAFANA_DATA_DIR }}/dashboards"
+      owner: "{{ GRAFANA_USER }}"
+    - path: "{{ GRAFANA_DATA_DIR }}/plugins"
+      owner: "{{ GRAFANA_USER }}"
+
+- name: "Install/Update Grafana"
+  block:
+  - name: "Get current OS architecture"
+    shell: "dpkg --print-architecture"
+    register: "OS_ARCHITECTURE"
+
+  - name: "Download Grafana and unpack"
+    ansible.builtin.unarchive:
+      src: "https://dl.grafana.com/oss/release/grafana-{{ GRAFANA_VERSION }}.linux-{{ OS_ARCHITECTURE.stdout }}.tar.gz"
+      dest: "{{ GRAFANA_INSTALL_DIR }}"
+      owner: "{{ GRAFANA_USER }}"
+      group: "{{ GRAFANA_GROUP }}"
+      mode: "0775"
+      remote_src: "yes"
+      extra_opts: [--strip-components=1]
+    register: "download_archive"
+    until: "download_archive is succeeded"
+    retries: "5"
+    delay: "2"
+  tags: "update"
+  notify:
+    - "Restart grafana-server"
+
+- name: "Create systemd service unit"
+  ansible.builtin.template:
+    src: "grafana-server.service.j2"
+    dest: "{{ GRAFANA_SERVICE_FILE }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify:
+    - "Restart grafana-server"

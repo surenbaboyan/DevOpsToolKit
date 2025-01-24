@@ -1,0 +1,14 @@
+[Unit]
+Description=NGINX LOG metrics exporter for Prometheus
+After=network-online.target
+
+[Service]
+ExecStart={{ NGINXLOG_EXPORTER_BINARY_INSTALL_DIR }}/prometheus-nginxlog-exporter -config-file {{ NGINXLOG_EXPORTER_CONFIG_FILE }}
+Restart=always
+User={{ NGINXLOG_EXPORTER_USER }}
+Group={{ NGINXLOG_EXPORTER_GROUP }}
+ProtectSystem=full
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

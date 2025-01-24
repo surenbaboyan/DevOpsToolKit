@@ -1,0 +1,26 @@
+---
+- name: "Add Elasticsearch apt key."
+  apt_key:
+    url: "https://artifacts.elastic.co/GPG-KEY-elasticsearch"
+    id: "46095ACC8548582C1A2699A9D27D666CD88E42B4"
+    state: "present"
+
+- name: "Add Metricbeat repository."
+  apt_repository:
+    repo: 'deb https://artifacts.elastic.co/packages/{{ METRICBEAT_VERSION_FAMILY }}/apt stable main'
+    state: "present"
+
+- name: "Install Metricbeat."
+  ansible.builtin.package:
+    name: "metricbeat={{ METRICBEAT_VERSION }}"
+    state: "present"
+    update_cache: "yes"
+  register: "apt_action"
+  retries: "50"
+  until: "apt_action is success or ('E: Could not get lock /var/lib/dpkg/lock-frontend' not in apt_action.msg and '/var/lib/dpkg/lock-frontend' not in apt_action.msg)"
+
+- name: "Ensure Metricbeat is started and enabled at boot."
+  ansible.builtin.service:
+    name: "metricbeat"
+    state: "started"
+    enabled: "true"

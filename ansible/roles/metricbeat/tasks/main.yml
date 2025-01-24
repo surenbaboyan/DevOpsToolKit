@@ -1,0 +1,19 @@
+
+--- 
+- block:
+    - name: "Install metricbeat"
+      ansible.builtin.include_tasks: "install.yml"
+  tags: "install"
+
+- block:
+    - name: "Configure metricbeat"
+      ansible.builtin.include_tasks: "configure.yml"
+      tags:
+        - "conf_file"
+        - "conf_modules"
+  tags: "configure"
+
+- block:
+    - name: "Remove metricbeat"
+      ansible.builtin.include_tasks: "remove.yml"
+  tags: "remove"

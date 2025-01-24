@@ -1,0 +1,16 @@
+ if [project][service] == "nginx" {
+
+    if [message] =~ /^{.*}/  {
+      json {
+        source => "message"
+      }
+    }
+ }
+
+date {
+  match => [ "timestamp" , "dd/MMM/YYYY:HH:mm:ss Z" ]
+}
+
+mutate {
+add_field => {"[project][hostname]" => "%{[host][hostname]}"}
+}

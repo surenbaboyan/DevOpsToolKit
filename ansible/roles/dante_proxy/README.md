@@ -1,0 +1,14 @@
+- Find the "**DANTE SERVICE ROLE**" and set values for the variables in the **common_settings**--->**vars**-->**main.yml** file.
+- Run the play_apps.yml Ansible playbook file using the command: 
+  - **ansible-playbook play_apps.yml --tags=select_tags_separated_by_comma**
+  - To install Dante proxy, use the **install,configure** tags. 
+  - To update the config file, use the **configure** tag. 
+  - To delete Dante, use the **remove** tag.
+- When prompted during the installation of the dante server, type "yes".
+- Check from the server's CLI:
+  - **curl -x socks5://username:password@server_ip_dante_proxy:50148 https://icanhazip.com**
+- The output should display the IP address of the server.
+- Check from a browser:
+  - Add the "**Socks5 Proxy for Shadowsocks**" or "**Proxy Switcher**" extension to Google Chrome.
+  - Type the **IP_address_dante_proxy:port_dante_proxy**
+  - Check the browser's IP address. If it matches the Dante proxy server's address, the server is configured correctly.
