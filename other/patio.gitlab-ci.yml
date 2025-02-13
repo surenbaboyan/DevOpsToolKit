@@ -1,0 +1,211 @@
+image: registry.gitlab.com/b1972/front-end/patio
+
+stages:
+  - Pre Deployment
+  - Deployment
+  - Post Deployment
+
+Unit-Tests:
+  tags:
+    - runner-01
+  stage: Pre Deployment
+  script:
+    - node -v
+    - npm -v
+    - npm i
+    - npm run format
+    - npm run lint
+    - npm run test
+    - npm run postinstall # TODO This should not be called explicitly
+    - npm run build
+  after_script:
+    - if [ ${CI_JOB_STATUS} == "success" ]; then EXIT_STATUS=0; else  EXIT_STATUS=1; fi
+    - source ./slackscript.sh; share_slack_update_build
+
+Deploy Production:
+  tags:
+    - runner-01
+  stage: Deployment
+  script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - eval $(ssh-agent -s)
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-add <(echo "$SSH_PRIVATE_KEY")
+    - ssh-add <(echo "$SSH_PRIVATE_KEY_BASTION")
+    - echo "$MY_ENV" > .env
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - npm cache clean --force
+    - npm cache verify
+    - npm install --save
+    - npm run postinstall # TODO This should not be called explicitly
+    - npm run build_production
+    - mkdir build
+    - cp -ra .next/ public/ package.json server/ server.js build/
+    - npm install --save --production --prefix build/
+    - npm audit fix --prefix build/
+    - cp ecosystem.config.js build/
+    - tar -cf build.tar build/
+    - getInstanceIpAddressesIntoASG=$(curl -X POST -H "x-api-key:$AWS_RESTAPI_KEY" $AWS_INVOKE_URL_GET_EC2_IP_ADDRESSES  -d '{"tagName":"Project", "tagValue":"'"$CI_PROJECT_TITLE"'"}')
+    - SERVERS=(`echo $getInstanceIpAddressesIntoASG | tr '"' ' '`)
+    - SERVERS[${#SERVERS[@]}]=$DEPLOY_SERVER
+    - ssh $DEPLOY_USER@$BASTION_SERVER -p $SSH_PORT "echo ${SERVERS[@]} | xargs -n1 -P${#SERVERS[@]} sh -c 'while ! nc -zv "'"$1"'" $APP_PORT; do sleep 1; done' sh"
+    - echo ${SERVERS[@]} | xargs -n1 -P${#SERVERS[@]} sh -c 'ssh -J $DEPLOY_USER@$BASTION_SERVER:$SSH_PORT -p $SSH_PORT $DEPLOY_USER@"$1" "[[ -d $DEPLOY_PATH ]] || mkdir -p $DEPLOY_PATH"' sh
+    - echo ${SERVERS[@]} | xargs -n1 -P${#SERVERS[@]} sh -c 'scp -o "ProxyJump $DEPLOY_USER@$BASTION_SERVER:$SSH_PORT" -P $SSH_PORT build.tar $DEPLOY_USER@"$1":$DEPLOY_PATH' sh
+    - echo ${SERVERS[@]} | xargs -n1 -P${#SERVERS[@]} sh -c 'scp -o "ProxyJump $DEPLOY_USER@$BASTION_SERVER:$SSH_PORT" -P $SSH_PORT convoyer.sh $DEPLOY_USER@"$1":$DEPLOY_PATH' sh
+    - echo ${SERVERS[@]} | xargs -n1 -P${#SERVERS[@]} sh -c 'scp -o "ProxyJump $DEPLOY_USER@$BASTION_SERVER:$SSH_PORT" -P $SSH_PORT .env $DEPLOY_USER@"$1":$DEPLOY_PATH' sh
+    - echo ${SERVERS[@]} | xargs -n1 -P${#SERVERS[@]} sh -c 'ssh -J $DEPLOY_USER@$BASTION_SERVER:$SSH_PORT -p $SSH_PORT $DEPLOY_USER@"$1" "cd $DEPLOY_PATH && chmod +x convoyer.sh && ./convoyer.sh --deploy --production $DEPLOY_PATH"' sh
+  after_script:
+    - |-
+      if [ ${CI_JOB_STATUS} == "success" ]; then
+        EXIT_STATUS=0;
+        echo -e "\e[1;31m$(curl -X  POST -H "x-api-key:$AWS_RESTAPI_KEY" $AWS_INVOKE_URL_CREATE_AMI  -d '{"tagName":"Project", "tagValue":"'"$CI_PROJECT_TITLE"'", "keepAmiCount":2, "amiName":"(P) '"$CI_PROJECT_TITLE"' - '"$CI_COMMIT_TAG"'", "description":"'"$CI_COMMIT_TAG $CI_COMMIT_TAG_MESSAGE"'", "scalable":""}')\e[0m"
+      else
+        EXIT_STATUS=1;
+        echo -e "\e[1;31m$(curl -X  POST -H "x-api-key:$AWS_RESTAPI_KEY" $AWS_INVOKE_URL_CREATE_AMI  -d '{"tagValue":"'"$CI_PROJECT_TITLE"'", "enableAlarms":""}')\e[0m"
+      fi
+    - source ./slackscript.sh; share_slack_update_build
+  cache:
+    paths:
+      - node_modules/
+  artifacts:
+    when: on_success
+    paths:
+      - build
+    expire_in: 1 day
+  only:
+    - tags
+
+Rollback Production:
+  tags:
+    - runner-01
+  stage: Post Deployment
+  script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - eval $(ssh-agent -s)
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-add <(echo "$SSH_PRIVATE_KEY")
+    - ssh-add <(echo "$SSH_PRIVATE_KEY_BASTION")
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - getInstanceIpAddressesIntoASG=$(curl -X POST -H "x-api-key:$AWS_RESTAPI_KEY" $AWS_INVOKE_URL_GET_EC2_IP_ADDRESSES  -d '{"tagName":"Project", "tagValue":"'"$CI_PROJECT_TITLE"'"}')
+    - SERVERS=(`echo $getInstanceIpAddressesIntoASG | tr '"' ' '`)
+    - SERVERS[${#SERVERS[@]}]=$DEPLOY_SERVER
+    - ssh $DEPLOY_USER@$BASTION_SERVER -p $SSH_PORT "echo ${SERVERS[@]} | xargs -n1 -P${#SERVERS[@]} sh -c 'while ! nc -zv "'"$1"'" $APP_PORT; do sleep 1; done' sh"
+    - echo ${SERVERS[@]} | xargs -n1 -P${#SERVERS[@]} sh -c 'ssh -J $DEPLOY_USER@$BASTION_SERVER:$SSH_PORT -p $SSH_PORT $DEPLOY_USER@"$1" "[[ -d $DEPLOY_PATH/move-after-rollback ]] || mkdir -p $DEPLOY_PATH/move-after-rollback"' sh
+    - echo ${SERVERS[@]} | xargs -n1 -P${#SERVERS[@]} sh -c 'ssh -J $DEPLOY_USER@$BASTION_SERVER:$SSH_PORT -p $SSH_PORT $DEPLOY_USER@"$1" "cd $DEPLOY_PATH && ./convoyer.sh --rollback --production $DEPLOY_PATH"' sh
+  after_script:
+    - |-
+      if [ ${CI_JOB_STATUS} == "success" ]; then
+        EXIT_STATUS=0;
+        echo -e "\e[1;31m$(curl -X  POST -H "x-api-key:$AWS_RESTAPI_KEY" $AWS_INVOKE_URL_ROLLBACK_FOR_ASG  -d '{"tagName":"Project", "tagValue":"'"$CI_PROJECT_TITLE"'"}')\e[0m";
+      else
+        EXIT_STATUS=1;
+        echo -e "\e[1;31m$(curl -X  POST -H "x-api-key:$AWS_RESTAPI_KEY" $AWS_INVOKE_URL_CREATE_AMI  -d '{"tagValue":"'"$CI_PROJECT_TITLE"'", "enableAlarms":""}')\e[0m";
+      fi
+    - source ./slackscript.sh; share_slack_update_build
+  when: manual
+  only:
+    - tags
+
+Cleanup Old Deployment:
+  tags:
+    - runner-01
+  stage: Post Deployment
+  script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - eval $(ssh-agent -s)
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-add <(echo "$SSH_PRIVATE_KEY")
+    - ssh-add <(echo "$SSH_PRIVATE_KEY_BASTION")
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - ssh -J $DEPLOY_USER@$BASTION_SERVER:$SSH_PORT -p $SSH_PORT $DEPLOY_USER@$DEPLOY_SERVER "cd $DEPLOY_PATH && ./convoyer.sh --cleanup --production $DEPLOY_PATH"
+  after_script:
+    - if [ ${CI_JOB_STATUS} == "success" ]; then EXIT_STATUS=0; else  EXIT_STATUS=1; fi
+    - source ./slackscript.sh; share_slack_update_build
+  when: manual
+  only:
+    - tags
+
+Deploy Develop:
+  tags:
+    - runner-01
+  stage: Deployment
+  script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - eval $(ssh-agent -s)
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-add <(echo "$SSH_PRIVATE_KEY_DEV")
+    - ssh-add <(echo "$SSH_PRIVATE_KEY_BASTION_DEV")
+    - echo "$MY_ENV_DEV" > .env
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - npm cache clean --force
+    - npm cache verify
+    - npm install --save
+    - npm run postinstall # TODO This should not be called explicitly
+    - npm run build_production
+    - mkdir build
+    - cp -ra .next/ public/ package.json server/ server.js build/
+    - npm install --save --production --prefix build/
+    - npm audit fix --prefix build/
+    - cp ecosystem.config.js build/
+    - tar -cf build.tar build/
+    - ssh -J $DEPLOY_USER_DEV@$BASTION_SERVER_DEV:$SSH_PORT -p $SSH_PORT $DEPLOY_USER_DEV@$DEPLOY_SERVER_DEV "'[[ -d $DEPLOY_PATH ]]' || mkdir -p $DEPLOY_PATH"
+    - scp -o "ProxyJump $DEPLOY_USER_DEV@$BASTION_SERVER_DEV:$SSH_PORT" -P $SSH_PORT build.tar "$DEPLOY_USER_DEV@$DEPLOY_SERVER_DEV:$DEPLOY_PATH"
+    - scp -o "ProxyJump $DEPLOY_USER_DEV@$BASTION_SERVER_DEV:$SSH_PORT" -P $SSH_PORT convoyer.sh "$DEPLOY_USER_DEV@$DEPLOY_SERVER_DEV:$DEPLOY_PATH"
+    - scp -o "ProxyJump $DEPLOY_USER_DEV@$BASTION_SERVER_DEV:$SSH_PORT" -P $SSH_PORT .env "$DEPLOY_USER_DEV@$DEPLOY_SERVER_DEV:$DEPLOY_PATH"
+    - ssh -J $DEPLOY_USER_DEV@$BASTION_SERVER_DEV:$SSH_PORT -p $SSH_PORT $DEPLOY_USER_DEV@$DEPLOY_SERVER_DEV "cd $DEPLOY_PATH && chmod +x convoyer.sh && ./convoyer.sh --deploy --develop $DEPLOY_PATH"
+  after_script:
+    - if [ ${CI_JOB_STATUS} == "success" ]; then EXIT_STATUS=0; else  EXIT_STATUS=1; fi
+    - source ./slackscript.sh; share_slack_update_build
+  cache:
+    paths:
+      - node_modules/
+  artifacts:
+    when: on_success
+    paths:
+      - build
+    expire_in: 1 day
+  only:
+    - develop
+
+Rollback Develop:
+  tags:
+    - runner-01
+  stage: Post Deployment
+  script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - eval $(ssh-agent -s)
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-add <(echo "$SSH_PRIVATE_KEY_DEV")
+    - ssh-add <(echo "$SSH_PRIVATE_KEY_BASTION_DEV")
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - ssh -J $DEPLOY_USER_DEV@$BASTION_SERVER_DEV:$SSH_PORT -p $SSH_PORT $DEPLOY_USER_DEV@$DEPLOY_SERVER_DEV "cd $DEPLOY_PATH && ./convoyer.sh --rollback --develop $DEPLOY_PATH"
+  after_script:
+    - if [ ${CI_JOB_STATUS} == "success" ]; then EXIT_STATUS=0; else  EXIT_STATUS=1; fi
+    - source ./slackscript.sh; share_slack_update_build
+  when: manual
+  only:
+    - develop
+
+Cleanup Old Develop Deployment:
+  tags:
+    - runner-01
+  stage: Post Deployment
+  script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - eval $(ssh-agent -s)
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-add <(echo "$SSH_PRIVATE_KEY_DEV")
+    - ssh-add <(echo "$SSH_PRIVATE_KEY_BASTION_DEV")
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - ssh -J $DEPLOY_USER_DEV@$BASTION_SERVER_DEV:$SSH_PORT -p $SSH_PORT $DEPLOY_USER_DEV@$DEPLOY_SERVER_DEV "cd $DEPLOY_PATH && ./convoyer.sh --cleanup --develop $DEPLOY_PATH"
+  after_script:
+    - if [ ${CI_JOB_STATUS} == "success" ]; then EXIT_STATUS=0; else  EXIT_STATUS=1; fi
+    - source ./slackscript.sh; share_slack_update_build
+  only:
+    - develop
