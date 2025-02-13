@@ -1,0 +1,33 @@
+version: '3.9'
+services:
+  nginx:
+    image: nginx:1.21.6-alpine
+    container_name: p-nginx
+    hostname: p-nginx
+    ports:
+      - '8086:80'
+    restart: always
+    depends_on:
+      - nodejs
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./hosts:/etc/hosts
+    networks:
+      app-net:
+        ipv4_address: 10.10.0.10
+  nodejs:
+    image: i/p-node
+    container_name: p-node
+    hostname: p-node
+    ports:
+      - '3086:3001'
+    restart: always
+    volumes:
+      - ../:/var/www/p/current
+    networks:
+      app-net:
+        ipv4_address: 10.10.0.11
+
+networks:
+  app-net:
+    external: true

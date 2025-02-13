@@ -1,0 +1,121 @@
+version: "3.9"
+services:
+  nginx:
+    image: nginx:1.21.6-alpine
+    container_name: g-nginx
+    hostname: g-nginx
+    ports:
+      - "8082:80"
+    restart: always
+    depends_on:
+      - php
+    volumes:
+      - ../:/var/www/g/current
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      app-net:
+        ipv4_address: 10.10.0.17
+  php:
+    image: i/g-php
+    container_name: g-php
+    hostname: g-php
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mariadb:
+        condition: service_healthy
+      nodejs:
+        condition: service_healthy
+    volumes:
+      - ../:/var/www/g/current
+      - ./supervisor/apps/php:/etc/supervisor/conf.d
+      - ./supervisor/supervisord.conf:/etc/supervisor/supervisord.conf
+    networks:
+      app-net:
+        ipv4_address: 10.10.0.18
+  nodejs:
+    image: i/g-node
+    container_name: g-node
+    hostname: gator-node
+    ports:
+      - "6082:6001"
+    restart: always
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "-v", "localhost", "6001" ]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    volumes:
+      - ../:/var/www/g/current
+      - ./supervisor/supervisord.conf:/etc/supervisor/supervisord.conf
+      - ./supervisor/apps/node:/etc/supervisor/conf.d
+    networks:
+      app-net:
+        ipv4_address: 10.10.0.19
+  mariadb:
+    image: mariadb:10.7.3
+    container_name: g-mariadb
+    hostname: g-mariadb
+    ports:
+      - "3382:3306"
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    volumes:
+      - /home/$USER/dockers_db_data/g:/var/lib/mysql
+    networks:
+      app-net:
+        ipv4_address: 10.10.0.20
+  redis:
+    image: redis:6.2.6
+    container_name: g-redis
+    hostname: g-redis
+    ports:
+      - "6382:6379"
+    restart: always
+    command: redis-server --save 60 1 --requirepass ${REDIS_PASSWORD} --loglevel warning
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 10s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    networks:
+      app-net:
+        ipv4_address: 10.10.0.21
+  mongodb:
+    image: mongo:5.0.6
+    container_name: g-mongodb
+    hostname: g-mongodb
+    ports:
+      - "27082:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${DB_MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_MONGO_PASSWORD}
+    restart: always
+    healthcheck:
+      test: [ "CMD","mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    networks:
+      app-net:
+        ipv4_address: 10.10.0.22
+
+networks:
+  app-net:
+    external: true
